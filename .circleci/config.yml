@@ -11,6 +11,11 @@ jobs:
           name: Install PlatformIO
           command: pip install --upgrade platformio
       - run:
+          name: Install library
+          command: |
+            pio lib -g install fabiobatsilva/ArduinoFake@^0.2.2
+            pio lib -g install git+https://github.com/google/googletest.git#release-1.11.0
+      - run:
           name: Compile Project
           command: pio test -e test_device -e test_transport
 
