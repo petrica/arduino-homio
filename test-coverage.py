@@ -11,7 +11,6 @@ def generateCoverageInfo(source, target, env):
     build_dir = env['PIOENV']
     os.system("mkdir coverage")
     os.system(".pio/build/" + build_dir + "/program")
-    os.system("touch lcov.info")
     os.system("lcov -d .pio/build/" + build_dir + "/src -c -o coverage/" + build_dir + ".info")
     os.system("lcov --extract coverage/" + build_dir + ".info '*src*' -o coverage/" + build_dir + ".info")
     os.system("lcov --remove coverage/" + build_dir + ".info '*.pio*' '*homio.h' '*main.cpp' '*ArduinoFake*' -o coverage/" + build_dir + ".info")
