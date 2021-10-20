@@ -12,7 +12,7 @@ jobs:
           command: pip install --upgrade platformio
       - run:
           name: Compile Project
-          command: pio test -e test_device -e test_transporter
+          command: pio test -e test_device -e test_transport
 
 workflows:
   main:
