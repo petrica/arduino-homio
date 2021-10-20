@@ -8,12 +8,17 @@ env.Append(
 )
 
 def generateCoverageInfo(source, target, env):
-    for file in os.listdir("test"):
-        os.system(".pio/build/test_device/program test/"+file)
-    os.system("lcov -d .pio/build/test_device/src -c -o lcov.info")
-    os.system("lcov --extract lcov.info '*src*' -o extract_lcov.info")
-    os.system("lcov --remove extract_lcov.info '*.pio*' '*homio.h' '*main.cpp' '*ArduinoFake*' -o lcov.info")
-    os.system("genhtml -o coverage/ lcov.info")
-    os.system("rm extract_lcov.info")
+    build_dir = env['PIOENV']
+    os.system("mkdir coverage")
+    os.system(".pio/build/" + build_dir + "/program")
+    os.system("touch lcov.info")
+    os.system("lcov -d .pio/build/" + build_dir + "/src -c -o coverage/" + build_dir + ".info")
+    os.system("lcov --extract coverage/" + build_dir + ".info '*src*' -o coverage/" + build_dir + ".info")
+    os.system("lcov --remove coverage/" + build_dir + ".info '*.pio*' '*homio.h' '*main.cpp' '*ArduinoFake*' -o coverage/" + build_dir + ".info")
+    merge = ""
+    for file in os.listdir("coverage"):
+      merge += "-a coverage/" + file + " "
+    os.system("lcov " + merge + " -o coverage/lcov.info")
+    os.system("rm coverage/" + build_dir + ".info")
 
-env.AddPostAction(".pio/build/test_device/program", generateCoverageInfo)
+env.AddPostAction(".pio/build/" + env['PIOENV'] + "/program", generateCoverageInfo)
