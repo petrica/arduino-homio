@@ -1,0 +1,55 @@
+# This is a basic workflow to help you get started with Actions
+
+name: CI
+
+# Controls when the workflow will run
+on:
+  # Triggers the workflow on push or pull request events but only for the main branch
+  push:
+    branches: [ v1 ]
+  pull_request:
+    branches: [ v1 ]
+
+  # Allows you to run this workflow manually from the Actions tab
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: Cache pip
+      uses: actions/cache@v2
+      with:
+        path: ~/.cache/pip
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+        restore-keys: |
+          ${{ runner.os }}-pip-
+    - name: Cache PlatformIO
+      uses: actions/cache@v2
+      with:
+        path: ~/.platformio
+        key: ${{ runner.os }}-${{ hashFiles('**/lockfiles') }}
+    - name: Set up Python
+      uses: actions/setup-python@v2
+    - name: Install PlatformIO
+      run: |
+        python -m pip install --upgrade pip
+        pip install --upgrade platformio
+    - name: Install library dependencies
+      run: |
+        pio lib -g install fabiobatsilva/ArduinoFake@^0.2.2
+        pio lib -g install google/googletest@^1.10.0
+    - name: Install lcov
+      run: |
+        apt-get update
+        apt-get install -y lcov
+    - name: Run PlatformIO
+      run: pio test -e test_device
+    - name: Report code coverage
+      uses: zgosalvez/github-actions-report-lcov@v1
+      with:
+        coverage-files: lcov.info
+        minimum-coverage: 90
+        artifact-name: code-coverage-report
+        github-token: ${{ secrets.GITHUB_TOKEN }}
