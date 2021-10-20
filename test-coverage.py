@@ -18,6 +18,7 @@ def generateCoverageInfo(source, target, env):
     for file in os.listdir("coverage"):
       merge += "-a coverage/" + file + " "
     os.system("lcov " + merge + " -o coverage/lcov.info")
+    os.system("cat coverage/lcov.info")
     os.system("rm coverage/" + build_dir + ".info")
 
 env.AddPostAction(".pio/build/" + env['PIOENV'] + "/program", generateCoverageInfo)
