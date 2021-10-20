@@ -1,5 +1,7 @@
 # Homio Library
 
+[![Coverage Status](https://coveralls.io/repos/github/petrica/arduino-homio/badge.svg?branch=main)](https://coveralls.io/github/petrica/arduino-homio?branch=main)
+
 Home automation library using nRF24 and ESP32 chips.
 
 # Concept
