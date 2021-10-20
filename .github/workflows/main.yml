@@ -42,8 +42,8 @@ jobs:
         pio lib -g install google/googletest@^1.10.0
     - name: Install lcov
       run: |
-        apt-get update
-        apt-get install -y lcov
+        sudo apt-get update
+        sudo apt-get install -y lcov
     - name: Run PlatformIO
       run: pio test -e test_device
     - name: Report code coverage
