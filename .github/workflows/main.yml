@@ -45,7 +45,9 @@ jobs:
         sudo apt-get update
         sudo apt-get install -y lcov
     - name: Run PlatformIO
-      run: pio test -e test_device -e test_transport
+      run: pio test -e test_device -e test_transport -v
+    - name: Run PlatformIO
+      run: cat coverage/lcov.info
     - name: Coveralls
       uses: coverallsapp/github-action@master
       with:
