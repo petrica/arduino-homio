@@ -7,34 +7,22 @@ using namespace Homio;
 
 class TransportTest : public Test {
   public:
-    Transport *transport;
+    Transport *underTest;
     NRFLiteMock *radio;
 
   void SetUp() {
     radio = new NRFLiteMock();
-    transport = new Transport(radio);
+    underTest = new Transport(radio);
   }
 
   void TearDown() {
-    delete transport;
-    transport = nullptr;
+    delete underTest;
+    underTest = nullptr;
 
     delete radio;
     radio = nullptr;
   }
 };
-
-TEST_F(TransportTest, DatapointsListIsEmpty) {
-  uint8_t listCount = transport->getDatapointsCount();
-  ASSERT_THAT(listCount, Eq(0));
-}
-
-TEST_F(TransportTest, DatapointsListHasCountOfOne) {
-  Datapoint datapoint;
-  transport->addDatapoint(&datapoint);
-  uint8_t listCount = transport->getDatapointsCount();
-  ASSERT_THAT(listCount, Eq(1));
-}
 
 TEST_F(TransportTest, CallSendWhenSendingHeartbeatCommand) {
   Command command = {};
@@ -53,7 +41,7 @@ TEST_F(TransportTest, CallSendWhenSendingHeartbeatCommand) {
   EXPECT_CALL(*radio, send(1, EqualToArray(expected, 4), 4))
       .Times(AtLeast(1));
 
-  transport->sendCommand(&command);
+  underTest->sendCommand(&command);
 }
 
 TEST_F(TransportTest, CallSendWhenSendingReportCommand) {
@@ -75,7 +63,7 @@ TEST_F(TransportTest, CallSendWhenSendingReportCommand) {
   EXPECT_CALL(*radio, send(1, EqualToArray(expected, 8), 8))
       .Times(AtLeast(1));
 
-  transport->sendCommand(&command);
+  underTest->sendCommand(&command);
 }
 
 TEST_F(TransportTest, CallSendWithCustomPayload) {
@@ -97,7 +85,7 @@ TEST_F(TransportTest, CallSendWithCustomPayload) {
   EXPECT_CALL(*radio, send(1, EqualToArray(expected, 9), 9))
       .Times(AtLeast(1));
 
-  transport->sendCommand(&command);
+  underTest->sendCommand(&command);
 }
 
 TEST_F(TransportTest, SendCommandToDifferentClient) {
@@ -115,7 +103,7 @@ TEST_F(TransportTest, SendCommandToDifferentClient) {
   EXPECT_CALL(*radio, send(command.toAddress, EqualToArray(expected, 4), 4))
       .Times(AtLeast(1));
 
-  transport->sendCommand(&command);
+  underTest->sendCommand(&command);
 }
 
 TEST_F(TransportTest, SendCommandToCustomClient) {
@@ -126,7 +114,7 @@ TEST_F(TransportTest, SendCommandToCustomClient) {
   EXPECT_CALL(*radio, send(customAddress, _, _))
       .Times(AtLeast(1));
 
-  transport->sendCommand(&command, customAddress);
+  underTest->sendCommand(&command, customAddress);
 }
 
 TEST_F(TransportTest, ReturnTrueWhenSuccessfulSendCommand) {
@@ -137,7 +125,7 @@ TEST_F(TransportTest, ReturnTrueWhenSuccessfulSendCommand) {
 
   EXPECT_CALL(*radio, send);
 
-  ASSERT_TRUE(transport->sendCommand(&command));
+  ASSERT_TRUE(underTest->sendCommand(&command));
 }
 
 TEST_F(TransportTest, ReturnFalseWhenUnsuccessulSendCommand) {
@@ -148,13 +136,13 @@ TEST_F(TransportTest, ReturnFalseWhenUnsuccessulSendCommand) {
 
   EXPECT_CALL(*radio, send);
 
-  ASSERT_FALSE(transport->sendCommand(&commnad));
+  ASSERT_FALSE(underTest->sendCommand(&commnad));
 }
 
 TEST_F(TransportTest, ReceiveConfirmCommand) {
   Command command = {};
 
-  transport->receiveCommand(&command);
+  underTest->receiveCommand(&command);
 
   ASSERT_THAT(command.type, Eq(CommandType::CONFIRM));
 }
@@ -166,7 +154,7 @@ TEST_F(TransportTest, AckReturnedNoData) {
     .WillByDefault(Return(0));
   EXPECT_CALL(*radio, hasAckData());
   
-  ASSERT_FALSE(transport->receiveAck(&command));
+  ASSERT_FALSE(underTest->receiveAck(&command));
 }
 
 TEST_F(TransportTest, AckReturnedConfirmCommand) {
@@ -187,7 +175,7 @@ TEST_F(TransportTest, AckReturnedConfirmCommand) {
       memcpy(data, expected, 4);
     }));
 
-  transport->receiveAck(&command);
+  underTest->receiveAck(&command);
 
   ASSERT_THAT(command.type, Eq(CommandType::CONFIRM));
 }
@@ -212,7 +200,7 @@ TEST_F(TransportTest, AckReturnedDatapointDeliveredCommand) {
       memcpy(data, expected, 4);
     }));
 
-  transport->receiveAck(&command);
+  underTest->receiveAck(&command);
 
   ASSERT_THAT(command, Field(&Command::type, Eq(CommandType::DATAPOINT_DELIVER)));
 }

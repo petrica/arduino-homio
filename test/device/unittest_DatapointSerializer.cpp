@@ -38,6 +38,18 @@ class DatapointSerializerTest : public Test {
   }
 };
 
+TEST_F(DatapointSerializerTest, DatapointsListIsEmpty) {
+  uint8_t listCount = underTest->getDatapointsCount();
+  ASSERT_THAT(listCount, Eq(0));
+}
+
+TEST_F(DatapointSerializerTest, DatapointsListHasCountOfOne) {
+  Datapoint datapoint;
+  underTest->addDatapoint(&datapoint);
+  uint8_t listCount = underTest->getDatapointsCount();
+  ASSERT_THAT(listCount, Eq(1));
+}
+
 TEST_F(DatapointSerializerTest, SerializeSelectsExpectedDatapoint) {
   const uint8_t expectedDatapointId = 10;
   datapoint.id = expectedDatapointId;
