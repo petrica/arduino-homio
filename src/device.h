@@ -3,6 +3,7 @@
 
 #include <homio.h>
 #include <utils.h>
+#include <component.h>
 #ifndef UNITTEST_DEVICE
     #include <transport.h>
 #else
@@ -11,6 +12,10 @@
 
 namespace Homio {
 
+    #ifdef UNIT_TEST
+    class DeviceUnderTest;
+    #endif
+
     enum class DeviceState : uint8_t {
         IDLE = 0x00,
         LOCK_REQUEST = 0x01,
@@ -18,23 +23,19 @@ namespace Homio {
         DATA_SEND = 0x03
     };
 
-    class Device {
+    class Device: public Component {
+
         public:
             Device(Transport *transport);
+
+            void tick();
+            
+        protected:
+            bool processCommand(const Command *command);
 
             void enqueueCommand(Command *command);
 
             Command *dequeueCommand();
-
-            uint8_t getCommandQueueSize();
-
-            void setState(DeviceState state);
-
-            DeviceState getState();
-
-            void tick();
-
-            bool processCommand(const Command *command);
 
         private:
             Command *commandQueue_[5];
@@ -43,6 +44,10 @@ namespace Homio {
             DeviceState state_;
 
             Transport *transport_;
+
+        #ifdef UNIT_TEST
+        friend class DeviceUnderTest;
+        #endif
     };
 }
 

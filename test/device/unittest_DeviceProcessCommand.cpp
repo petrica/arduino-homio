@@ -1,5 +1,5 @@
 #include <gmock/gmock.h>
-#include <device.h>
+#include <DeviceUnderTest.h>
 #include <TransportMock.h>
 #include <matchers.h>
 
@@ -8,13 +8,13 @@ using namespace Homio;
 
 class DeviceProcessCommand : public Test {
   public:
-    Device *device;
+    DeviceUnderTest *underTest;
     TransportMock *transport;
     Command commandHeartbeat = {};
 
   void SetUp() {
     transport = new TransportMock();
-    device = new Device(transport);
+    underTest = new DeviceUnderTest(transport);
 
     commandHeartbeat.type = CommandType::HEARTBEAT;
     commandHeartbeat.fromAddress = 10;
@@ -22,8 +22,8 @@ class DeviceProcessCommand : public Test {
   }
 
   void TearDown() {
-    delete device;
-    device = nullptr;
+    delete underTest;
+    underTest = nullptr;
 
     delete transport;
     transport = nullptr;
@@ -46,7 +46,7 @@ TEST_F(DeviceProcessCommand, SuccessfullyProcessIfAllConditionsMet) {
     }));
   EXPECT_CALL(*transport, sendCommand(_));
 
-  ASSERT_TRUE(device->processCommand(&commandHeartbeat));
+  ASSERT_TRUE(underTest->processCommand(&commandHeartbeat));
 }
 
 TEST_F(DeviceProcessCommand, FailProcessIfNoAckData) {
@@ -59,7 +59,7 @@ TEST_F(DeviceProcessCommand, FailProcessIfNoAckData) {
   EXPECT_CALL(*transport, sendCommand(_));
   EXPECT_CALL(*transport, receiveAck(_));
 
-  ASSERT_FALSE(device->processCommand(&commandHeartbeat));
+  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat));
 }
 
 TEST_F(DeviceProcessCommand, FailProcessIfSendFailed) {
@@ -70,7 +70,7 @@ TEST_F(DeviceProcessCommand, FailProcessIfSendFailed) {
   EXPECT_CALL(*transport, receiveAck(_))
     .Times(0);
 
-  ASSERT_FALSE(device->processCommand(&commandHeartbeat));
+  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat));
 }
 
 TEST_F(DeviceProcessCommand, FailProcessIfAckDataIntendedForOtherDevice) {
@@ -89,5 +89,6 @@ TEST_F(DeviceProcessCommand, FailProcessIfAckDataIntendedForOtherDevice) {
     }));
   EXPECT_CALL(*transport, sendCommand(_));
 
-  ASSERT_FALSE(device->processCommand(&commandHeartbeat));
+  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat));
 }
+

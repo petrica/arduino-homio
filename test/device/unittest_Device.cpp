@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
 #include <TransportMock.h>
-#include <device.h>
+#include <DeviceUnderTest.h>
 #include <matchers.h>
 
 using namespace ::testing;
@@ -34,17 +34,17 @@ using namespace Homio;
 
 class DeviceTest : public Test {
   public:
-    Device *device;
+    DeviceUnderTest *underTest;
     Transport *transport;
 
   void SetUp() {
     transport = new TransportMock();
-    device = new Device(transport);
+    underTest = new DeviceUnderTest(transport);
   }
 
   void TearDown() {
-    delete device;
-    device = nullptr;
+    delete underTest;
+    underTest = nullptr;
 
     delete transport;
     transport = nullptr;
@@ -53,28 +53,28 @@ class DeviceTest : public Test {
 
 TEST_F(DeviceTest, CommandQueueHasSizeOfOne) {
   Command command;
-  device->enqueueCommand(&command);
-  uint8_t queueSize = device->getCommandQueueSize();
+  underTest->enqueueCommand(&command);
+  uint8_t queueSize = underTest->getCommandQueueSize();
   ASSERT_THAT(queueSize, Eq(1));
 }
 
 TEST_F(DeviceTest, CommandQueueIsEmpty) {
-  uint8_t queueSize = device->getCommandQueueSize();
+  uint8_t queueSize = underTest->getCommandQueueSize();
   ASSERT_THAT(queueSize, Eq(0));
 }
 
 TEST_F(DeviceTest, DequeueReportCommand) {
   Command command = {};
   command.type = CommandType::DATAPOINT_REPORT;
-  device->enqueueCommand(&command);
+  underTest->enqueueCommand(&command);
   Command *actual;
-  actual = device->dequeueCommand();
+  actual = underTest->dequeueCommand();
   ASSERT_THAT(actual->type, Eq(CommandType::DATAPOINT_REPORT));
 }
 
 TEST_F(DeviceTest, DequeueEmptyQueueRemainsEmpty) {
-  device->dequeueCommand();
-  uint8_t queueSize = device->getCommandQueueSize();
+  underTest->dequeueCommand();
+  uint8_t queueSize = underTest->getCommandQueueSize();
   ASSERT_THAT(queueSize, Eq(0));
 }
 
@@ -85,8 +85,8 @@ TEST_F(DeviceTest, DequeueEmptyQueueRemainsEmpty) {
 //   datapoint.id = 1;
 //   datapoint.type = DatapointType::INTEGER;
 //   datapoint.value_int = 0;
-//   device->addDatapoint(&datapoint);
-//   device->reportDatapoint(Datapoint *datapoint);
+//   underTest->addDatapoint(&datapoint);
+//   underTest->reportDatapoint(Datapoint *datapoint);
 
 
 //   ASSERT_THAT()

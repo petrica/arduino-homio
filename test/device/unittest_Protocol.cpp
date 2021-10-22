@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
 #include <TransportMock.h>
-#include <device.h>
+#include <DeviceUnderTest.h>
 #include <matchers.h>
 
 using namespace ::testing;
@@ -8,17 +8,17 @@ using namespace Homio;
 
 class ProtocolTest : public Test {
   public:
-    Device *device;
+    DeviceUnderTest *underTest;
     Transport *transport;
 
   void SetUp() {
     transport = new TransportMock();
-    device = new Device(transport);
+    underTest = new DeviceUnderTest(transport);
   }
 
   void TearDown() {
-    delete device;
-    device = nullptr;
+    delete underTest;
+    underTest = nullptr;
 
     delete transport;
     transport = nullptr;
@@ -26,14 +26,14 @@ class ProtocolTest : public Test {
 };
 
 TEST_F(ProtocolTest, DeviceStateDefaultToIdle) {
-  ASSERT_THAT(device->getState(), Eq(DeviceState::IDLE));
+  ASSERT_THAT(underTest->getState(), Eq(DeviceState::IDLE));
 }
 
 // Implement the protocol
 TEST_F(ProtocolTest, ProtocolDoNothingIfNothingToSend) {
-  device->setState(DeviceState::IDLE);
-  device->tick();
-  ASSERT_THAT(device->getState(), Eq(DeviceState::IDLE));
+  underTest->setState(DeviceState::IDLE);
+  underTest->tick();
+  ASSERT_THAT(underTest->getState(), Eq(DeviceState::IDLE));
 }
 
 TEST_F(ProtocolTest, ProtocolRequestLockStateIfSomethingToSend) {
@@ -42,10 +42,10 @@ TEST_F(ProtocolTest, ProtocolRequestLockStateIfSomethingToSend) {
   command.fromAddress = 10;
   command.toAddress = 1;
   command.payloadSize = 0;
-  device->setState(DeviceState::IDLE);
-  device->enqueueCommand(&command);
-  device->tick();
-  ASSERT_THAT(device->getState(), Eq(DeviceState::LOCK_REQUEST));
+  underTest->setState(DeviceState::IDLE);
+  underTest->enqueueCommand(&command);
+  underTest->tick();
+  ASSERT_THAT(underTest->getState(), Eq(DeviceState::LOCK_REQUEST));
 }
 
 TEST_F(ProtocolTest, ProtocolRequestLockReturnEmptyAck) {
@@ -54,8 +54,8 @@ TEST_F(ProtocolTest, ProtocolRequestLockReturnEmptyAck) {
   command.fromAddress = 10;
   command.toAddress = 1;
   command.payloadSize = 0;
-  device->setState(DeviceState::IDLE);
-  device->enqueueCommand(&command);
+  underTest->setState(DeviceState::IDLE);
+  underTest->enqueueCommand(&command);
   // Lock requested and return empty ack
-  device->tick();
+  underTest->tick();
 }

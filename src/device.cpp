@@ -3,7 +3,7 @@
 namespace Homio {
 
     Device::Device(Transport *transport): transport_(transport) {
-        setState(DeviceState::IDLE);
+        state_ = DeviceState::IDLE;
     }
 
     void Device::enqueueCommand(Command *command) {
@@ -20,21 +20,9 @@ namespace Homio {
         return nullptr;
     }
 
-    uint8_t Device::getCommandQueueSize() {
-        return commandQueueSize_;
-    }
-
-    void Device::setState(DeviceState state) {
-        state_ = state;
-    }
-
-    DeviceState Device::getState() {
-        return state_;
-    }
-
     void Device::tick() {
-        if (getCommandQueueSize() > 0) {
-            setState(DeviceState::LOCK_REQUEST);
+        if (commandQueueSize_ > 0) {
+            state_ = DeviceState::LOCK_REQUEST;
         }
     }
 

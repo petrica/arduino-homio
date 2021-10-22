@@ -1,30 +1,40 @@
 #include <gmock/gmock.h>
-#include <transport.h>
+#include <component.h>
 #include <matchers.h>
 
 using namespace ::testing;
 using namespace Homio;
 
+class Homio::ComponentUnderTest: public Component {
+  public:
+    uint8_t serializeDatapoint(uint8_t datapointId, uint8_t *buffer) {
+      return Component::serializeDatapoint(datapointId, buffer);
+    }
+
+    Datapoint *unserializeDatapoint(uint8_t *buffer) {
+      return Component::unserializeDatapoint(buffer);
+    }
+
+    uint8_t getDatapointsCount() {
+      return datapointsCount_;
+    }
+};
+
 class DatapointSerializerTest : public Test {
   public:
-    Transport *transport;
-    NRFLiteMock *radio;
+    ComponentUnderTest *underTest;
     uint8_t buffer[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
     Datapoint datapoint;
     uint8_t actualLength;
 
   void SetUp() {
-    radio = new NRFLiteMock();
-    transport = new Transport(radio);
+    underTest = new ComponentUnderTest();
     datapoint = {};
   }
 
   void TearDown() {
-    delete transport;
-    transport = nullptr;
-
-    delete radio;
-    radio = nullptr;
+    delete underTest;
+    underTest = nullptr;
   }
 };
 
@@ -34,10 +44,10 @@ TEST_F(DatapointSerializerTest, SerializeSelectsExpectedDatapoint) {
   datapoint.type = DatapointType::BOOLEAN;
   datapoint.value_bool = true;
 
-  transport->addDatapoint(&datapoint);
-  transport->serializeDatapoint(expectedDatapointId, buffer);
+  underTest->addDatapoint(&datapoint);
+  underTest->serializeDatapoint(expectedDatapointId, buffer);
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(expectedDatapoint, Field(&Datapoint::id, Eq(expectedDatapointId)));
 }
@@ -54,11 +64,11 @@ TEST_F(DatapointSerializerTest, SerializeSelectsSecondDatapointIfMany) {
   datapointB.type = DatapointType::BOOLEAN;
   datapointB.value_bool = false;
 
-  transport->addDatapoint(&datapointA);
-  transport->addDatapoint(&datapointB);
-  transport->serializeDatapoint(expectedDatapointId, buffer);
+  underTest->addDatapoint(&datapointA);
+  underTest->addDatapoint(&datapointB);
+  underTest->serializeDatapoint(expectedDatapointId, buffer);
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(expectedDatapoint, Field(&Datapoint::id, Eq(expectedDatapointId)));
 }
@@ -68,12 +78,12 @@ TEST_F(DatapointSerializerTest, SerializeBooleanDatapoint) {
   datapoint.type = DatapointType::BOOLEAN;
   datapoint.value_bool = true;
 
-  transport->addDatapoint(&datapoint);
-  actualLength = transport->serializeDatapoint(1, buffer);
+  underTest->addDatapoint(&datapoint);
+  actualLength = underTest->serializeDatapoint(1, buffer);
 
   datapoint.value_int = 0;
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(actualLength, Eq(HOMIO_DATAPOINT_HEADER_SIZE + 1));
   ASSERT_TRUE(expectedDatapoint->value_bool);
@@ -85,12 +95,12 @@ TEST_F(DatapointSerializerTest, SerializeIntDatapoint) {
   datapoint.type = DatapointType::INTEGER;
   datapoint.value_int = expected;
 
-  transport->addDatapoint(&datapoint);
-  actualLength = transport->serializeDatapoint(1, buffer);
+  underTest->addDatapoint(&datapoint);
+  actualLength = underTest->serializeDatapoint(1, buffer);
 
   datapoint.value_int = 0;
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(actualLength, Eq(HOMIO_DATAPOINT_HEADER_SIZE + 4));
   ASSERT_THAT(expectedDatapoint->value_int, Eq(expected));
@@ -102,12 +112,12 @@ TEST_F(DatapointSerializerTest, SerializeByteDatapoint) {
   datapoint.type = DatapointType::BYTE;
   datapoint.value_byte = expected;
 
-  transport->addDatapoint(&datapoint);
-  actualLength = transport->serializeDatapoint(1, buffer);
+  underTest->addDatapoint(&datapoint);
+  actualLength = underTest->serializeDatapoint(1, buffer);
 
   datapoint.value_int = 0;
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(actualLength, Eq(HOMIO_DATAPOINT_HEADER_SIZE + 1));
   ASSERT_THAT(expectedDatapoint->value_byte, Eq(expected));
@@ -122,12 +132,12 @@ TEST_F(DatapointSerializerTest, SerializeRawDatapoint) {
   datapoint.length = 10;
   datapoint.value_raw = raw;
 
-  transport->addDatapoint(&datapoint);
-  actualLength = transport->serializeDatapoint(1, buffer);
+  underTest->addDatapoint(&datapoint);
+  actualLength = underTest->serializeDatapoint(1, buffer);
 
   memset(raw, 0, 10);
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(actualLength, Eq(HOMIO_DATAPOINT_HEADER_SIZE + 10));
   ASSERT_THAT(expectedDatapoint->value_raw, EqualToArray(expected, 10));
@@ -143,12 +153,12 @@ TEST_F(DatapointSerializerTest, SerializeStringDatapoint) {
   datapoint.value_string = valueString;
   datapoint.length = 10;
 
-  transport->addDatapoint(&datapoint);
-  actualLength = transport->serializeDatapoint(1, buffer);
+  underTest->addDatapoint(&datapoint);
+  actualLength = underTest->serializeDatapoint(1, buffer);
 
   memset(valueString, 0, 10);
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(actualLength, Eq(HOMIO_DATAPOINT_HEADER_SIZE + 10));
   ASSERT_THAT(expectedDatapoint->value_string, StrEq(expected));
@@ -159,12 +169,12 @@ TEST_F(DatapointSerializerTest, FailToDeserializeNonexistingDatapoint) {
   datapoint.type = DatapointType::BOOLEAN;
   datapoint.value_bool = true;
 
-  transport->addDatapoint(&datapoint);
-  transport->serializeDatapoint(1, buffer);
+  underTest->addDatapoint(&datapoint);
+  underTest->serializeDatapoint(1, buffer);
 
   buffer[0] = 2;
 
-  Datapoint *expectedDatapoint = transport->unserializeDatapoint(buffer);
+  Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
 
   ASSERT_THAT(expectedDatapoint, Eq(nullptr));
 }
@@ -174,5 +184,5 @@ TEST_F(DatapointSerializerTest, SerailizerReturnsEmptyIfNoDatapointToSerialize) 
   datapoint.type = DatapointType::BOOLEAN;
   datapoint.value_bool = true;
 
-  ASSERT_THAT(transport->serializeDatapoint(1, buffer), Eq(0));
+  ASSERT_THAT(underTest->serializeDatapoint(1, buffer), Eq(0));
 }
