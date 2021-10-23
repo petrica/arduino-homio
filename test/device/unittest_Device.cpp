@@ -1,7 +1,7 @@
 #include <gmock/gmock.h>
 #include <TransportMock.h>
 #include <DeviceUnderTest.h>
-#include <matchers.h>
+#include <Matchers.h>
 
 using namespace ::testing;
 using namespace Homio;
@@ -51,6 +51,12 @@ class DeviceTest : public Test {
   }
 };
 
+TEST_F(DeviceTest, EnqueuingFirtCommandReturnsTrue) {
+  Command command;
+  bool actual = underTest->enqueueCommand(&command);
+  ASSERT_TRUE(actual);
+}
+
 TEST_F(DeviceTest, CommandQueueHasSizeOfOne) {
   Command command;
   underTest->enqueueCommand(&command);
@@ -91,5 +97,40 @@ TEST_F(DeviceTest, DequeueEmptyQueueRemainsEmpty) {
 
 //   ASSERT_THAT()
 // }
+
+TEST_F(DeviceTest, SendDatapointReturnTrue) {
+  Datapoint datapoint = {};
+  datapoint.id = 1;
+  datapoint.type = DatapointType::INTEGER;
+  datapoint.value_int = 0;
+
+  underTest->addDatapoint(&datapoint);
+
+  ASSERT_TRUE(underTest->sendDatapoint(1));
+}
+
+TEST_F(DeviceTest, SendNonExistingDatapointReturnFalse) {
+  Datapoint datapoint = {};
+  datapoint.id = 1;
+  datapoint.type = DatapointType::INTEGER;
+  datapoint.value_int = 0;
+
+  underTest->addDatapoint(&datapoint);
+
+  ASSERT_FALSE(underTest->sendDatapoint(2));
+}
+
+TEST_F(DeviceTest, SendDatapointEnqueueCommand) {
+  Datapoint datapoint = {};
+  datapoint.id = 1;
+  datapoint.type = DatapointType::INTEGER;
+  datapoint.value_int = 0;
+
+  underTest->addDatapoint(&datapoint);
+
+  underTest->sendDatapoint(1);
+
+  ASSERT_THAT(underTest->getCommandQueueSize(), Eq(1));
+}
 
 

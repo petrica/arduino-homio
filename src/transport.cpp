@@ -1,5 +1,5 @@
-#include <transport.h>
-#include <utils.h>
+#include <Transport.h>
+#include <Utils.h>
 
 namespace Homio {
     Transport::Transport(NRFLite *radio): radio_(radio) {
@@ -7,8 +7,9 @@ namespace Homio {
     }
 
     bool Transport::sendCommand(const Command *command, const uint8_t radioId) {
-        uint8_t dataSize = serializeCommand(command, buffer_);
-        return radio_->send(radioId, buffer_, dataSize);
+        uint8_t buffer[HOMIO_BUFFER_SIZE];
+        uint8_t dataSize = serializeCommand(command, buffer);
+        return radio_->send(radioId, buffer, dataSize);
     }
 
     bool Transport::sendCommand(const Command *command) {
@@ -21,9 +22,10 @@ namespace Homio {
 
     bool Transport::receiveAck(Command *command) {
         if (radio_->hasAckData()) {
-            radio_->readData(buffer_);
+            uint8_t buffer[HOMIO_BUFFER_SIZE];
+            radio_->readData(buffer);
 
-            unserializeCommand(command, buffer_);
+            unserializeCommand(command, buffer);
 
             return true;
         }
@@ -32,10 +34,10 @@ namespace Homio {
     }
 
     uint8_t Transport::serializeCommand(const Command *command, uint8_t *buffer) {
-        buffer_[0] = static_cast<uint8_t>(command->type);
-        buffer_[1] = command->fromAddress;
-        buffer_[2] = command->toAddress;
-        buffer_[3] = command->payloadSize;
+        buffer[0] = static_cast<uint8_t>(command->type);
+        buffer[1] = command->fromAddress;
+        buffer[2] = command->toAddress;
+        buffer[3] = command->payloadSize;
         memcpy(buffer + HOMIO_COMMAND_HEADER_SIZE, command->payload, command->payloadSize);
 
         return HOMIO_COMMAND_HEADER_SIZE + command->payloadSize;

@@ -1,4 +1,4 @@
-#include <device.h>
+#include <Device.h>
 
 namespace Homio {
 
@@ -6,9 +6,10 @@ namespace Homio {
         state_ = DeviceState::IDLE;
     }
 
-    void Device::enqueueCommand(Command *command) {
+    bool Device::enqueueCommand(Command *command) {
         commandQueue_[commandQueueSize_] = command;
         commandQueueSize_ += 1;
+        return true;
     }
 
     Command *Device::dequeueCommand() {
@@ -33,5 +34,17 @@ namespace Homio {
         if (receiveCommand.toAddress != command->fromAddress) return false;
 
         return true;
+    }
+
+    bool Device::sendDatapoint(const uint8_t datapointId) {
+        Datapoint *datapoint = getDatapoint(datapointId);
+
+        if (datapoint) {
+            Command *command = borrowCommandInstance();
+            command->payloadSize = serializeDatapoint(datapointId, command->payload);
+            return enqueueCommand(command);
+        }
+
+        return false;   
     }
 }

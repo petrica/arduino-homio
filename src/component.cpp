@@ -1,5 +1,5 @@
-#include <component.h>
-#include <utils.h>
+#include <Component.h>
+#include <Utils.h>
 
 namespace Homio {
 

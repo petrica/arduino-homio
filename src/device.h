@@ -1,11 +1,12 @@
 #ifndef _HomioDevice_h_
 #define _HomioDevice_h_
 
-#include <homio.h>
-#include <utils.h>
-#include <component.h>
+#include <Homio.h>
+#include <Utils.h>
+#include <Component.h>
+#include <CommandPool.h>
 #ifndef UNITTEST_DEVICE
-    #include <transport.h>
+    #include <Transport.h>
 #else
     #include <TransportMock.h>
 #endif
@@ -23,17 +24,19 @@ namespace Homio {
         DATA_SEND = 0x03
     };
 
-    class Device: public Component {
+    class Device: public Component, public CommandPool {
 
         public:
             Device(Transport *transport);
+
+            bool sendDatapoint(const uint8_t datapointId);
 
             void tick();
             
         protected:
             bool processCommand(const Command *command);
 
-            void enqueueCommand(Command *command);
+            bool enqueueCommand(Command *command);
 
             Command *dequeueCommand();
 

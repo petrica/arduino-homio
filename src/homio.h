@@ -1,7 +1,7 @@
 #ifndef _HomioHomio_h_
 #define _HomioHomio_h_
 
-#include <config.h>
+#include <Config.h>
 #include <Arduino.h>
 
 namespace Homio
@@ -41,8 +41,10 @@ namespace Homio
             uint32_t value_uint;
             uint8_t value_byte;
         };
-        char *value_string;
-        uint8_t *value_raw;
+        union {
+            char *value_string;
+            uint8_t *value_raw;
+        };
     };
 }
 

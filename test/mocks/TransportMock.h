@@ -3,7 +3,7 @@
 
 #include <ArduinoFake.h>
 #include <gmock/gmock.h>
-#include <homio.h>
+#include <Homio.h>
 
 namespace Homio {
     class Transport {

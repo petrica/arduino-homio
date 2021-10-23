@@ -1,7 +1,7 @@
 #ifndef _HomioTransport_h_
 #define _HomioTransport_h_
 
-#include <homio.h>
+#include <Homio.h>
 #include <NRFLite.h>
 
 namespace Homio {
@@ -22,8 +22,6 @@ namespace Homio {
 
         private:
             NRFLite *radio_;
-
-            uint8_t buffer_[HOMIO_BUFFER_SIZE];
     };
 
 }

@@ -1,7 +1,7 @@
 #ifndef _HomioComponent_h_
 #define _HomioComponent_h_
 
-#include <homio.h>
+#include <Homio.h>
 
 namespace Homio {
     #ifdef UNIT_TEST

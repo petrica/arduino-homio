@@ -1,6 +1,6 @@
 #include <gmock/gmock.h>
-#include <transport.h>
-#include <matchers.h>
+#include <Transport.h>
+#include <Matchers.h>
 
 using namespace ::testing;
 using namespace Homio;

@@ -1,7 +1,7 @@
 #include <gmock/gmock.h>
 #include <DeviceUnderTest.h>
 #include <TransportMock.h>
-#include <matchers.h>
+#include <Matchers.h>
 
 using namespace ::testing;
 using namespace Homio;
