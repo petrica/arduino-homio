@@ -4,11 +4,12 @@
 #include <Homio.h>
 #include <Utils.h>
 #include <Component.h>
-#include <CommandPool.h>
 #ifndef UNITTEST_DEVICE
-    #include <Transport.h>
+    #include <Protocol.h>
+    #include <CommandPool.h>
 #else
-    #include <TransportMock.h>
+    #include <ProtocolMock.h>
+    #include <CommandPoolMock.h>
 #endif
 
 namespace Homio {
@@ -24,29 +25,31 @@ namespace Homio {
         DATA_SEND = 0x03
     };
 
-    class Device: public Component, public CommandPool {
+    class Device: public Component {
 
         public:
-            Device(Transport *transport);
+            Device(Protocol *protocol, CommandPool *commandPool);
 
             bool sendDatapoint(const uint8_t datapointId);
 
             void tick();
             
         protected:
-            bool processCommand(const Command *command);
+            bool processCommand(const Command *command, Command *receivedCommand);
 
             bool enqueueCommand(Command *command);
-
             Command *dequeueCommand();
+            Command *peekCommand();
 
         private:
-            Command *commandQueue_[5];
+            Command *commandQueue_[HOMIO_COMMAND_QUEUE_SIZE];
             uint8_t commandQueueSize_ = 0;
+            uint8_t commandQueueFirst_ = 0;
 
             DeviceState state_;
 
-            Transport *transport_;
+            Protocol *protocol_;
+            CommandPool *commandPool_;
 
         #ifdef UNIT_TEST
         friend class DeviceUnderTest;

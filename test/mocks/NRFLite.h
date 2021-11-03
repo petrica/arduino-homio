@@ -1,7 +1,7 @@
 #ifndef _NRFLite_h_
 #define _NRFLite_h_
 
-#include <ArduinoFake.h>
+#include <Arduino.h>
 #include <gmock/gmock.h>
 
 enum Bitrates { BITRATE2MBPS, BITRATE1MBPS, BITRATE250KBPS };

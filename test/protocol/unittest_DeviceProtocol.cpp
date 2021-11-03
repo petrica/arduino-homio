@@ -1,20 +1,19 @@
 #include <gmock/gmock.h>
-#include <DeviceUnderTest.h>
-#include <TransportMock.h>
+#include <DeviceProtocol.h>
 #include <Matchers.h>
 
 using namespace ::testing;
 using namespace Homio;
 
-class DeviceProcessCommand : public Test {
+class DeviceProtocolTest : public Test {
   public:
-    DeviceUnderTest *underTest;
+    DeviceProtocol *underTest;
     TransportMock *transport;
     Command commandHeartbeat = {};
 
   void SetUp() {
     transport = new TransportMock();
-    underTest = new DeviceUnderTest(transport);
+    underTest = new DeviceProtocol(transport);
 
     commandHeartbeat.type = CommandType::HEARTBEAT;
     commandHeartbeat.fromAddress = 10;
@@ -30,12 +29,14 @@ class DeviceProcessCommand : public Test {
   }
 };
 
-TEST_F(DeviceProcessCommand, SuccessfullyProcessIfAllConditionsMet) {
+TEST_F(DeviceProtocolTest, SuccessfullyProcessIfAllConditionsMet) {
   Command expectedCommand = {};
   expectedCommand.type = CommandType::CONFIRM;
   expectedCommand.fromAddress = 1;
   expectedCommand.toAddress = 10;
   expectedCommand.payloadSize = 0;
+
+  Command receivedCommand = {};
 
   ON_CALL(*transport, sendCommand)
     .WillByDefault(Return(true));
@@ -46,10 +47,11 @@ TEST_F(DeviceProcessCommand, SuccessfullyProcessIfAllConditionsMet) {
     }));
   EXPECT_CALL(*transport, sendCommand(_));
 
-  ASSERT_TRUE(underTest->processCommand(&commandHeartbeat));
+  ASSERT_TRUE(underTest->processCommand(&commandHeartbeat, &receivedCommand));
 }
 
-TEST_F(DeviceProcessCommand, FailProcessIfNoAckData) {
+TEST_F(DeviceProtocolTest, FailProcessIfNoAckData) {
+  Command receivedCommand = {};
   
   ON_CALL(*transport, sendCommand)
     .WillByDefault(Return(true));
@@ -59,10 +61,12 @@ TEST_F(DeviceProcessCommand, FailProcessIfNoAckData) {
   EXPECT_CALL(*transport, sendCommand(_));
   EXPECT_CALL(*transport, receiveAck(_));
 
-  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat));
+  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat, &receivedCommand));
 }
 
-TEST_F(DeviceProcessCommand, FailProcessIfSendFailed) {
+TEST_F(DeviceProtocolTest, FailProcessIfSendFailed) {
+  Command receivedCommand = {};
+
   ON_CALL(*transport, sendCommand)
     .WillByDefault(Return(false));
 
@@ -70,15 +74,17 @@ TEST_F(DeviceProcessCommand, FailProcessIfSendFailed) {
   EXPECT_CALL(*transport, receiveAck(_))
     .Times(0);
 
-  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat));
+  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat, &receivedCommand));
 }
 
-TEST_F(DeviceProcessCommand, FailProcessIfAckDataIntendedForOtherDevice) {
+TEST_F(DeviceProtocolTest, FailProcessIfAckDataIntendedForOtherDevice) {
   Command expectedCommand = {};
   expectedCommand.type = CommandType::CONFIRM;
   expectedCommand.fromAddress = 1;
   expectedCommand.toAddress = 11;
   expectedCommand.payloadSize = 0;
+
+  Command receivedCommand = {};
 
   ON_CALL(*transport, sendCommand)
     .WillByDefault(Return(true));
@@ -89,6 +95,28 @@ TEST_F(DeviceProcessCommand, FailProcessIfAckDataIntendedForOtherDevice) {
     }));
   EXPECT_CALL(*transport, sendCommand(_));
 
-  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat));
+  ASSERT_FALSE(underTest->processCommand(&commandHeartbeat, &receivedCommand));
 }
 
+TEST_F(DeviceProtocolTest, ReceiveConfirmCommand) {
+  Command expectedCommand = {};
+  expectedCommand.type = CommandType::CONFIRM;
+  expectedCommand.fromAddress = 1;
+  expectedCommand.toAddress = 11;
+  expectedCommand.payloadSize = 0;
+
+  Command receivedCommand = {};
+
+  ON_CALL(*transport, sendCommand)
+    .WillByDefault(Return(true));
+  EXPECT_CALL(*transport, receiveAck(_)) 
+    .WillOnce(Invoke([=](const Command *command) -> bool { 
+      memcpy((void*)command, &expectedCommand, sizeof(Command));
+      return true; 
+    }));
+  EXPECT_CALL(*transport, sendCommand(_));
+
+  underTest->processCommand(&commandHeartbeat, &receivedCommand);
+
+  ASSERT_THAT(receivedCommand.type, Eq(CommandType::CONFIRM));
+}

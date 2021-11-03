@@ -1,5 +1,4 @@
 #include <gmock/gmock.h>
-#include <TransportMock.h>
 #include <DeviceUnderTest.h>
 #include <Matchers.h>
 
@@ -35,68 +34,37 @@ using namespace Homio;
 class DeviceTest : public Test {
   public:
     DeviceUnderTest *underTest;
-    Transport *transport;
+    ProtocolMock *protocol;
+    CommandPoolMock *commandPool;
+    Command *command;
+    uint8_t *payload;
 
   void SetUp() {
-    transport = new TransportMock();
-    underTest = new DeviceUnderTest(transport);
+    protocol = new ProtocolMock();
+    commandPool = new CommandPoolMock();
+    underTest = new DeviceUnderTest(protocol, commandPool);
+    command = new Command();
+    payload = new uint8_t[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
+    command->payload = payload;
   }
 
   void TearDown() {
     delete underTest;
     underTest = nullptr;
 
-    delete transport;
-    transport = nullptr;
+    delete protocol;
+    protocol = nullptr;
+
+    delete commandPool;
+    commandPool = nullptr;
+
+    delete payload;
+    payload = nullptr;
+
+    delete command;
+    command = nullptr;
   }
 };
-
-TEST_F(DeviceTest, EnqueuingFirtCommandReturnsTrue) {
-  Command command;
-  bool actual = underTest->enqueueCommand(&command);
-  ASSERT_TRUE(actual);
-}
-
-TEST_F(DeviceTest, CommandQueueHasSizeOfOne) {
-  Command command;
-  underTest->enqueueCommand(&command);
-  uint8_t queueSize = underTest->getCommandQueueSize();
-  ASSERT_THAT(queueSize, Eq(1));
-}
-
-TEST_F(DeviceTest, CommandQueueIsEmpty) {
-  uint8_t queueSize = underTest->getCommandQueueSize();
-  ASSERT_THAT(queueSize, Eq(0));
-}
-
-TEST_F(DeviceTest, DequeueReportCommand) {
-  Command command = {};
-  command.type = CommandType::DATAPOINT_REPORT;
-  underTest->enqueueCommand(&command);
-  Command *actual;
-  actual = underTest->dequeueCommand();
-  ASSERT_THAT(actual->type, Eq(CommandType::DATAPOINT_REPORT));
-}
-
-TEST_F(DeviceTest, DequeueEmptyQueueRemainsEmpty) {
-  underTest->dequeueCommand();
-  uint8_t queueSize = underTest->getCommandQueueSize();
-  ASSERT_THAT(queueSize, Eq(0));
-}
-
-// TEST_F(DeviceTest, EnqueueMoreThanMaxReturnsFalse)
-
-// TEST_F(DeviceTest, DatapointEnqueueReportCommand) {
-//   Datapoint datapoint = {};
-//   datapoint.id = 1;
-//   datapoint.type = DatapointType::INTEGER;
-//   datapoint.value_int = 0;
-//   underTest->addDatapoint(&datapoint);
-//   underTest->reportDatapoint(Datapoint *datapoint);
-
-
-//   ASSERT_THAT()
-// }
 
 TEST_F(DeviceTest, SendDatapointReturnTrue) {
   Datapoint datapoint = {};
@@ -105,6 +73,9 @@ TEST_F(DeviceTest, SendDatapointReturnTrue) {
   datapoint.value_int = 0;
 
   underTest->addDatapoint(&datapoint);
+  ON_CALL(*commandPool, borrowCommandInstance)
+    .WillByDefault(Return(command));
+  EXPECT_CALL(*commandPool, borrowCommandInstance());
 
   ASSERT_TRUE(underTest->sendDatapoint(1));
 }
@@ -116,6 +87,8 @@ TEST_F(DeviceTest, SendNonExistingDatapointReturnFalse) {
   datapoint.value_int = 0;
 
   underTest->addDatapoint(&datapoint);
+  EXPECT_CALL(*commandPool, borrowCommandInstance())
+    .Times(0);
 
   ASSERT_FALSE(underTest->sendDatapoint(2));
 }
@@ -127,10 +100,26 @@ TEST_F(DeviceTest, SendDatapointEnqueueCommand) {
   datapoint.value_int = 0;
 
   underTest->addDatapoint(&datapoint);
+  ON_CALL(*commandPool, borrowCommandInstance)
+    .WillByDefault(Return(command));
+  EXPECT_CALL(*commandPool, borrowCommandInstance());
 
   underTest->sendDatapoint(1);
 
   ASSERT_THAT(underTest->getCommandQueueSize(), Eq(1));
 }
 
+TEST_F(DeviceTest, UnsuccessfulSendDatapointIfNoMoreObjectsInPool) {
+  Datapoint datapoint = {};
+  datapoint.id = 1;
+  datapoint.type = DatapointType::INTEGER;
+  datapoint.value_int = 0;
+
+  underTest->addDatapoint(&datapoint);
+  ON_CALL(*commandPool, borrowCommandInstance)
+    .WillByDefault(Return(nullptr));
+  EXPECT_CALL(*commandPool, borrowCommandInstance());
+
+  ASSERT_FALSE(underTest->sendDatapoint(1));
+}
 

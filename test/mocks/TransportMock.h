@@ -1,7 +1,7 @@
 #ifndef _HomioTransport_h_
 #define _HomioTransport_h_
 
-#include <ArduinoFake.h>
+#include <Arduino.h>
 #include <gmock/gmock.h>
 #include <Homio.h>
 

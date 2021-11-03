@@ -6,12 +6,12 @@
 namespace Homio {
     class DeviceUnderTest: public Device {
         public:
-            DeviceUnderTest(Transport *transport): Device(transport) {
+            DeviceUnderTest(Protocol *protocol, CommandPool *commandPool): Device(protocol, commandPool) {
 
             }
 
-            bool processCommand(const Command *command) {
-                return Device::processCommand(command);
+            bool processCommand(const Command *command, Command *receivedCommand) {
+                return Device::processCommand(command, receivedCommand);
             }
 
             bool enqueueCommand(Command *command) {
@@ -20,6 +20,10 @@ namespace Homio {
 
             Command *dequeueCommand() {
                 return Device::dequeueCommand();
+            }
+
+            Command *peekCommand() {
+                return Device::peekCommand();
             }
 
             uint8_t getCommandQueueSize() {
