@@ -38,24 +38,31 @@ namespace Homio {
     }
 
     void Device::tick() {
+        Command received = {};
+        Command command = {};
+
         switch (state_) {
             case DeviceState::IDLE:
                     if (commandQueueSize_ > 0) state_ = DeviceState::LOCK_REQUEST;
                 break;
             case DeviceState::LOCK_REQUEST:
-                    Command received = {};
-                    Command command = {};
                     command.type = CommandType::LOCK_REQUEST;
                     if (protocol_->processCommand(&command, &received)) {
-
+                        state_ = DeviceState::DATA_SEND;
                     }
-                    else {
-                        state_ = DeviceState::IDLE;
-                        if (received.fromAddress == 0 && received.fromAddress == 0) {
-                            
-                        }
-                        else delay(100);
+                    else if (received.fromAddress == 0 && received.fromAddress == 0) state_ = DeviceState::IDLE;    
+                    else state_ = DeviceState::LOCK_DELAY;
+                break;
+            case DeviceState::LOCK_DELAY:
+                    delay(100);
+                break;
+            case DeviceState::DATA_SEND:
+                    Command *commandToSend = peekCommand();
+                    if (commandToSend != nullptr) {
+                        if (protocol_->processCommand(commandToSend, &received))
+                            dequeueCommand();
                     }
+                    state_ = DeviceState::IDLE;
                 break;
         }
     }
