@@ -10,10 +10,6 @@ namespace Homio {
 
             }
 
-            bool processCommand(const Command *command, Command *receivedCommand) {
-                return Device::processCommand(command, receivedCommand);
-            }
-
             bool enqueueCommand(Command *command) {
                 return Device::enqueueCommand(command);
             }
