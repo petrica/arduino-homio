@@ -35,8 +35,6 @@ namespace Homio {
             void tick();
             
         protected:
-            bool processCommand(const Command *command, Command *receivedCommand);
-
             bool enqueueCommand(Command *command);
             Command *dequeueCommand();
             Command *peekCommand();
