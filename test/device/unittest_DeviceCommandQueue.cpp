@@ -8,21 +8,21 @@ using namespace Homio;
 class DeviceCommandQueueTest : public Test {
   public:
     DeviceUnderTest *underTest;
-    ProtocolMock *protocol;
+    TransportMock *transport;
     CommandPoolMock *commandPool;
 
   void SetUp() {
-    protocol = new ProtocolMock();
+    transport = new TransportMock();
     commandPool = new CommandPoolMock();
-    underTest = new DeviceUnderTest(protocol, commandPool);
+    underTest = new DeviceUnderTest(transport, commandPool);
   }
 
   void TearDown() {
     delete underTest;
     underTest = nullptr;
 
-    delete protocol;
-    protocol = nullptr;
+    delete transport;
+    transport = nullptr;
 
     delete commandPool;
     commandPool = nullptr;

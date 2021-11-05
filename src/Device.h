@@ -5,10 +5,10 @@
 #include <Utils.h>
 #include <Component.h>
 #ifndef UNITTEST_DEVICE
-    #include <Protocol.h>
+    #include <Transport.h>
     #include <CommandPool.h>
 #else
-    #include <ProtocolMock.h>
+    #include <TransportMock.h>
     #include <CommandPoolMock.h>
 #endif
 
@@ -28,7 +28,7 @@ namespace Homio {
     class Device: public Component {
 
         public:
-            Device(Protocol *protocol, CommandPool *commandPool);
+            Device(uint8_t deviceAddress, uint8_t hubAddress, Transport *transport, CommandPool *commandPool);
 
             bool sendDatapoint(const uint8_t datapointId);
 
@@ -46,8 +46,11 @@ namespace Homio {
 
             DeviceState state_;
 
-            Protocol *protocol_;
+            Transport *transport_;
             CommandPool *commandPool_;
+
+            const uint8_t deviceAddress_;
+            const uint8_t hubAddress_;
 
         #ifdef UNIT_TEST
         friend class DeviceUnderTest;

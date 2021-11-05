@@ -2,7 +2,8 @@
 
 namespace Homio {
 
-    Device::Device(Protocol *protocol, CommandPool *commandPool): protocol_(protocol), commandPool_(commandPool) {
+    Device::Device(uint8_t deviceAddress, uint8_t hubAddress, Transport *transport, CommandPool *commandPool): 
+        transport_(transport), commandPool_(commandPool), deviceAddress_(deviceAddress), hubAddress_(hubAddress) {
         state_ = DeviceState::IDLE;
     }
 
@@ -47,11 +48,19 @@ namespace Homio {
                 break;
             case DeviceState::LOCK_REQUEST:
                     command.type = CommandType::LOCK_REQUEST;
-                    if (protocol_->processCommand(&command, &received)) {
-                        state_ = DeviceState::DATA_SEND;
+                    command.fromAddress = 10;
+                    command.toAddress = 1;
+                    if (transport_->sendCommand(&command) 
+                        && transport_->receiveAck(&received) 
+                        && received.fromAddress != 0) {
+                            if (command.fromAddress == received.toAddress)
+                                state_ = DeviceState::DATA_SEND;
+                            else
+                                state_ = DeviceState::LOCK_DELAY;
                     }
-                    else if (received.fromAddress == 0 && received.fromAddress == 0) state_ = DeviceState::IDLE;    
-                    else state_ = DeviceState::LOCK_DELAY;
+                    else {
+                        state_ = DeviceState::IDLE;
+                    }
                 break;
             case DeviceState::LOCK_DELAY:
                     delay(100);
@@ -59,8 +68,12 @@ namespace Homio {
             case DeviceState::DATA_SEND:
                     Command *commandToSend = peekCommand();
                     if (commandToSend != nullptr) {
-                        if (protocol_->processCommand(commandToSend, &received))
-                            dequeueCommand();
+                        if (transport_->sendCommand(commandToSend)
+                            && transport_->receiveAck(&received)
+                            && commandToSend->fromAddress == received.toAddress
+                            && received.type == CommandType::CONFIRM) {
+                                dequeueCommand();
+                        }
                     }
                     state_ = DeviceState::IDLE;
                 break;

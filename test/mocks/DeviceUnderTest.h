@@ -6,7 +6,8 @@
 namespace Homio {
     class DeviceUnderTest: public Device {
         public:
-            DeviceUnderTest(Protocol *protocol, CommandPool *commandPool): Device(protocol, commandPool) {
+            DeviceUnderTest(Transport *transport, CommandPool *commandPool): 
+                Device(10, 1, transport, commandPool) {
 
             }
 

@@ -34,15 +34,15 @@ using namespace Homio;
 class DeviceTest : public Test {
   public:
     DeviceUnderTest *underTest;
-    ProtocolMock *protocol;
+    TransportMock *transport;
     CommandPoolMock *commandPool;
     Command *command;
     uint8_t *payload;
 
   void SetUp() {
-    protocol = new ProtocolMock();
+    transport = new TransportMock();
     commandPool = new CommandPoolMock();
-    underTest = new DeviceUnderTest(protocol, commandPool);
+    underTest = new DeviceUnderTest(transport, commandPool);
     command = new Command();
     payload = new uint8_t[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
     command->payload = payload;
@@ -52,8 +52,8 @@ class DeviceTest : public Test {
     delete underTest;
     underTest = nullptr;
 
-    delete protocol;
-    protocol = nullptr;
+    delete transport;
+    transport = nullptr;
 
     delete commandPool;
     commandPool = nullptr;
@@ -123,3 +123,9 @@ TEST_F(DeviceTest, UnsuccessfulSendDatapointIfNoMoreObjectsInPool) {
   ASSERT_FALSE(underTest->sendDatapoint(1));
 }
 
+/**
+ * Unserialize LOCK_DELIVER command and retreive the communication port
+ * check for the lock if the lock_deliver command is present
+ * 
+ * 
+ **/
