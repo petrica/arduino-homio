@@ -11,7 +11,7 @@ namespace Homio {
             Transport() {};
             virtual ~Transport() = default;
             virtual bool sendCommand(const Command *command) = 0;
-            // virtual bool sendCommand(const Command *command, const uint8_t radioId);
+            virtual bool sendCommand(const Command *command, const uint8_t radioId) = 0;
             // virtual void receiveCommand(Command *command);
             virtual bool receiveAck(Command *command) = 0;
     };
@@ -20,6 +20,7 @@ namespace Homio {
         public:
             TransportMock(): Transport() {};
             MOCK_METHOD(bool, sendCommand, (const Command *command), (override));
+            MOCK_METHOD(bool, sendCommand, (const Command *command, const uint8_t readioId), (override));
             MOCK_METHOD(bool, receiveAck, (Command *command), (override));
     };
 }

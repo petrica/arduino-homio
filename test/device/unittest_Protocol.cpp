@@ -11,12 +11,14 @@ public:
     DeviceUnderTest *underTest;
     TransportMock *transport;
     CommandPool *commandPool;
+    uint8_t *payload;
 
     void SetUp()
     {
         transport = new StrictMock<TransportMock>();
         commandPool = new CommandPoolMock();
         underTest = new DeviceUnderTest(transport, commandPool);
+        payload = new uint8_t[10];
     }
 
     void TearDown()
@@ -26,6 +28,9 @@ public:
 
         delete transport;
         transport = nullptr;
+
+        delete[] payload;
+        payload = nullptr;
     }
 };
 
@@ -68,7 +73,7 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceiveEmptyResponseStatusShouldReturnT
     Command expectedCommand = {};
     underTest->setState(DeviceState::LOCK_REQUEST);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(_));
     EXPECT_CALL(*transport, receiveAck(_))
@@ -88,11 +93,12 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceiveLockForOtherDeviceThenStatusIdDe
     expectedCommand.type = CommandType::LOCK_DELIVER;
     expectedCommand.fromAddress = 1;
     expectedCommand.toAddress = 11;
-    expectedCommand.payloadSize = 0;
+    expectedCommand.payloadSize = 1;
+    expectedCommand.payload = payload;
 
     underTest->setState(DeviceState::LOCK_REQUEST);
     
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(_));
     EXPECT_CALL(*transport, receiveAck(_))
@@ -112,11 +118,12 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenStatusIsDataSend
     expectedCommand.type = CommandType::LOCK_DELIVER;
     expectedCommand.fromAddress = 1;
     expectedCommand.toAddress = 10;
-    expectedCommand.payloadSize = 0;
+    expectedCommand.payloadSize = 1;
+    expectedCommand.payload = payload;
 
     underTest->setState(DeviceState::LOCK_REQUEST);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(_));
     EXPECT_CALL(*transport, receiveAck(_))
@@ -129,6 +136,32 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenStatusIsDataSend
     underTest->tick();
 
     ASSERT_THAT(underTest->getState(), Eq(DeviceState::DATA_SEND));
+}
+
+TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenHubReceiveAddressShouldBePopulated) {
+    Command expectedCommand = {};
+    expectedCommand.type = CommandType::LOCK_DELIVER;
+    expectedCommand.fromAddress = 1;
+    expectedCommand.toAddress = 10;
+    expectedCommand.payloadSize = 1;
+    payload[0] = 2;
+    expectedCommand.payload = payload;
+
+    underTest->setState(DeviceState::LOCK_REQUEST);
+
+    ON_CALL(*transport, sendCommand(_))
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*transport, sendCommand(_));
+    EXPECT_CALL(*transport, receiveAck(_))
+        .WillOnce(Invoke([=](Command *receivedCommand) -> bool
+        { 
+            memcpy((void*)receivedCommand, &expectedCommand, sizeof(Command));
+            return true; 
+        }));
+
+    underTest->tick();
+
+    ASSERT_THAT(underTest->getHubReceiveAddress(), Eq(2));
 }
 
 TEST_F(ProtocolTest, WhenInLockDelayThenDelay) {
@@ -159,10 +192,10 @@ TEST_F(ProtocolTest, WhenInDataSendThenSendDatapointReportCommand) {
     underTest->setState(DeviceState::DATA_SEND);
     underTest->enqueueCommand(&expectedCommand);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_, _))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(
-        Field(&Command::type, Eq(CommandType::DATAPOINT_REPORT)))
+        Field(&Command::type, Eq(CommandType::DATAPOINT_REPORT)), _)
     );
     EXPECT_CALL(*transport, receiveAck);
 
@@ -178,9 +211,9 @@ TEST_F(ProtocolTest, WhenDataSendFailsThenCommandQueueIsNotEmpty) {
     underTest->setState(DeviceState::DATA_SEND);
     underTest->enqueueCommand(&expectedCommand);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_, _))
         .WillByDefault(Return(false));
-    EXPECT_CALL(*transport, sendCommand);
+    EXPECT_CALL(*transport, sendCommand(_, _));
 
     underTest->tick();
 
@@ -196,9 +229,9 @@ TEST_F(ProtocolTest, WhenDataSendAndNoAckTheQueueIsNotEmpty) {
     underTest->setState(DeviceState::DATA_SEND);
     underTest->enqueueCommand(&expectedCommand);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_, _))
         .WillByDefault(Return(true));
-    EXPECT_CALL(*transport, sendCommand);
+    EXPECT_CALL(*transport, sendCommand(_, _));
     ON_CALL(*transport, receiveAck)
         .WillByDefault(Return(false));
     EXPECT_CALL(*transport, receiveAck);
@@ -222,9 +255,9 @@ TEST_F(ProtocolTest, WhenDataSendForDeviceThenCommandQueueIsEmpty) {
     underTest->setState(DeviceState::DATA_SEND);
     underTest->enqueueCommand(&sentCommand);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_, _))
         .WillByDefault(Return(true));
-    EXPECT_CALL(*transport, sendCommand);
+    EXPECT_CALL(*transport, sendCommand(_, _));
     EXPECT_CALL(*transport, receiveAck(_))
         .WillOnce(Invoke([=](Command *receivedCommand) -> bool
         { 
@@ -251,9 +284,9 @@ TEST_F(ProtocolTest, WhenDataSendIsNotConfirmedThenCommandQueueIsNotEmpty) {
     underTest->setState(DeviceState::DATA_SEND);
     underTest->enqueueCommand(&sentCommand);
 
-    ON_CALL(*transport, sendCommand)
+    ON_CALL(*transport, sendCommand(_, _))
         .WillByDefault(Return(true));
-    EXPECT_CALL(*transport, sendCommand);
+    EXPECT_CALL(*transport, sendCommand(_, _));
     EXPECT_CALL(*transport, receiveAck(_))
         .WillOnce(Invoke([=](Command *receivedCommand) -> bool
         { 
@@ -266,10 +299,28 @@ TEST_F(ProtocolTest, WhenDataSendIsNotConfirmedThenCommandQueueIsNotEmpty) {
     ASSERT_THAT(underTest->getCommandQueueSize(), Gt(0));
 }
 
+TEST_F(ProtocolTest, WhenDataSendThenCallWithHubReceivedAddress) {
+    Command sentCommand = {};
+    sentCommand.fromAddress = 10;
+    sentCommand.toAddress = 1;
+    sentCommand.type = CommandType::DATAPOINT_REPORT;
+
+    underTest->setState(DeviceState::DATA_SEND);
+    underTest->setHubReceiveAddress(2);
+    underTest->enqueueCommand(&sentCommand);
+
+    ON_CALL(*transport, sendCommand(_, _))
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*transport, sendCommand(_, Eq(2)));
+    EXPECT_CALL(*transport, receiveAck(_));
+
+    underTest->tick();
+}
+
 TEST_F(ProtocolTest, WhenInDataSendAndQueueEmptyThenDontSend) {
     underTest->setState(DeviceState::DATA_SEND);
     
-    EXPECT_CALL(*transport, sendCommand)
+    EXPECT_CALL(*transport, sendCommand(_))
         .Times(0);
 
     underTest->tick();

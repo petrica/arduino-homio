@@ -40,23 +40,18 @@ namespace Homio {
 
     void Device::tick() {
         Command received = {};
-        Command command = {};
 
         switch (state_) {
             case DeviceState::IDLE:
                     if (commandQueueSize_ > 0) state_ = DeviceState::LOCK_REQUEST;
                 break;
             case DeviceState::LOCK_REQUEST:
-                    command.type = CommandType::LOCK_REQUEST;
-                    command.fromAddress = 10;
-                    command.toAddress = 1;
-                    if (transport_->sendCommand(&command) 
-                        && transport_->receiveAck(&received) 
-                        && received.fromAddress != 0) {
-                            if (command.fromAddress == received.toAddress)
+                    if (sendLockRequest(&received)) {
+                        if (received.toAddress == deviceAddress_) {
+                                hubReceiveAddress_ = received.payload[0];
                                 state_ = DeviceState::DATA_SEND;
-                            else
-                                state_ = DeviceState::LOCK_DELAY;
+                        }
+                        else state_ = DeviceState::LOCK_DELAY;
                     }
                     else {
                         state_ = DeviceState::IDLE;
@@ -66,14 +61,8 @@ namespace Homio {
                     delay(100);
                 break;
             case DeviceState::DATA_SEND:
-                    Command *commandToSend = peekCommand();
-                    if (commandToSend != nullptr) {
-                        if (transport_->sendCommand(commandToSend)
-                            && transport_->receiveAck(&received)
-                            && commandToSend->fromAddress == received.toAddress
-                            && received.type == CommandType::CONFIRM) {
-                                dequeueCommand();
-                        }
+                    if (sendCommand(peekCommand())) {
+                        dequeueCommand();
                     }
                     state_ = DeviceState::IDLE;
                 break;
@@ -91,5 +80,26 @@ namespace Homio {
         }
 
         return false;   
+    }
+
+    bool Device::sendLockRequest(Command *receivedCommand) {
+        Command command = {};
+        command.type = CommandType::LOCK_REQUEST;
+        command.fromAddress = deviceAddress_;
+        command.toAddress = hubAddress_;
+        
+        return transport_->sendCommand(&command) 
+            && transport_->receiveAck(receivedCommand) 
+            && receivedCommand->payloadSize == 1;
+    }
+
+    bool Device::sendCommand(Command *command) {
+        if (command == nullptr) return false;
+
+        Command received = {};
+        return transport_->sendCommand(command, hubReceiveAddress_)
+                && transport_->receiveAck(&received)
+                && command->fromAddress == received.toAddress
+                && received.type == CommandType::CONFIRM;
     }
 }

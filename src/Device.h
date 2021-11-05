@@ -40,6 +40,9 @@ namespace Homio {
             Command *peekCommand();
 
         private:
+            bool sendLockRequest(Command *receiveCommand);
+            bool sendCommand(Command *command);
+
             Command *commandQueue_[HOMIO_COMMAND_QUEUE_SIZE];
             uint8_t commandQueueSize_ = 0;
             uint8_t commandQueueFirst_ = 0;
@@ -51,6 +54,7 @@ namespace Homio {
 
             const uint8_t deviceAddress_;
             const uint8_t hubAddress_;
+            uint8_t hubReceiveAddress_;
 
         #ifdef UNIT_TEST
         friend class DeviceUnderTest;

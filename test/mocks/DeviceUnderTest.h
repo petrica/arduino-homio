@@ -34,6 +34,14 @@ namespace Homio {
             DeviceState getState() {
                 return state_;
             }
+
+            uint8_t getHubReceiveAddress() {
+                return hubReceiveAddress_;
+            }
+
+            void setHubReceiveAddress(uint8_t address) {
+                hubReceiveAddress_ = address;
+            }
         };
 }
 
