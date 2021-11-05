@@ -1,24 +1,10 @@
 #include <gmock/gmock.h>
 #include <Component.h>
 #include <Matchers.h>
+#include <ComponentUnderTest.h>
 
 using namespace ::testing;
 using namespace Homio;
-
-class Homio::ComponentUnderTest: public Component {
-  public:
-    uint8_t serializeDatapoint(uint8_t datapointId, uint8_t *buffer) {
-      return Component::serializeDatapoint(datapointId, buffer);
-    }
-
-    Datapoint *unserializeDatapoint(uint8_t *buffer) {
-      return Component::unserializeDatapoint(buffer);
-    }
-
-    uint8_t getDatapointsCount() {
-      return datapointsCount_;
-    }
-};
 
 class DatapointSerializerTest : public Test {
   public:

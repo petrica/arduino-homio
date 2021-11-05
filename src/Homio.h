@@ -46,6 +46,18 @@ namespace Homio
             uint8_t *value_raw;
         };
     };
+
+    enum class DeviceState : uint8_t {
+        IDLE = 0x00,
+        LOCK_REQUEST = 0x01,
+        LOCK_DELAY = 0x02,
+        DATA_SEND = 0x03
+    };
+
+    struct DeviceCapabilities {
+        uint32_t heartbeatInterval;
+        bool canReceive;
+    };
 }
 
 #endif

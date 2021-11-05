@@ -18,13 +18,6 @@ namespace Homio {
     class DeviceUnderTest;
     #endif
 
-    enum class DeviceState : uint8_t {
-        IDLE = 0x00,
-        LOCK_REQUEST = 0x01,
-        LOCK_DELAY = 0x02,
-        DATA_SEND = 0x03
-    };
-
     class Device: public Component {
 
         public:
