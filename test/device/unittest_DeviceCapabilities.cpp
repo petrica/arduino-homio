@@ -44,3 +44,4 @@ TEST_F(DeviceCapabilitiesTest, WhenSerializeThenUnserializeSuccesfully) {
     ASSERT_THAT(actualCapabilities, Field(&DeviceCapabilities::heartbeatInterval, Eq(expectedCapabilities.heartbeatInterval)));
     ASSERT_THAT(actualCapabilities, Field(&DeviceCapabilities::canReceive, Eq(expectedCapabilities.canReceive)));
 }
+

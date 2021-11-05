@@ -5,6 +5,10 @@ namespace Homio {
     Device::Device(uint8_t deviceAddress, uint8_t hubAddress, Transport *transport, CommandPool *commandPool): 
         transport_(transport), commandPool_(commandPool), deviceAddress_(deviceAddress), hubAddress_(hubAddress) {
         state_ = DeviceState::IDLE;
+        setCapabilities({
+            HOMIO_DEVICE_CAPABILITIES_HEARTBEAT_INTERVAL,
+            HOMIO_DEVICE_CAPABILITIES_CAN_RECEIVE
+        });
     }
 
     bool Device::enqueueCommand(Command *command) {
@@ -39,16 +43,17 @@ namespace Homio {
     }
 
     void Device::tick() {
-        Command received = {};
+        Command *received;
 
         switch (state_) {
             case DeviceState::IDLE:
                     if (commandQueueSize_ > 0) state_ = DeviceState::LOCK_REQUEST;
                 break;
             case DeviceState::LOCK_REQUEST:
-                    if (sendLockRequest(&received)) {
-                        if (received.toAddress == deviceAddress_) {
-                                hubReceiveAddress_ = received.payload[0];
+                    received = commandPool_->borrowCommandInstance();
+                    if (sendLockRequest(received)) {
+                        if (received->toAddress == deviceAddress_) {
+                                hubReceiveAddress_ = received->payload[0];
                                 state_ = DeviceState::DATA_SEND;
                         }
                         else state_ = DeviceState::LOCK_DELAY;
@@ -56,6 +61,7 @@ namespace Homio {
                     else {
                         state_ = DeviceState::IDLE;
                     }
+                    commandPool_->returnCommandInstance(received);
                 break;
             case DeviceState::LOCK_DELAY:
                     delay(100);
@@ -75,6 +81,8 @@ namespace Homio {
         if (datapoint) {
             Command *command = commandPool_->borrowCommandInstance();
             if (command == nullptr) return false;
+            command->fromAddress = deviceAddress_;
+            command->toAddress = hubAddress_;
             command->payloadSize = serializeDatapoint(datapointId, command->payload);
             return enqueueCommand(command);
         }

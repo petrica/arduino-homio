@@ -14,6 +14,9 @@ namespace Homio {
             void addDatapoint(Datapoint *datapoint);
             Datapoint *getDatapoint(uint8_t datapointId);
 
+            void setCapabilities(DeviceCapabilities capabilities);
+            DeviceCapabilities getCapabilities();
+
         protected:
             uint8_t serializeDatapoint(uint8_t datapointId, uint8_t *buffer);
             Datapoint *unserializeDatapoint(uint8_t *buffer);
@@ -24,6 +27,7 @@ namespace Homio {
         private:
             Datapoint *datapoints_[5];
             uint8_t datapointsCount_ = 0;
+            DeviceCapabilities capabilities_;
 
         #ifdef UNIT_TEST
         friend class ComponentUnderTest;

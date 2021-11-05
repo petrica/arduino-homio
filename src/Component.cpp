@@ -119,4 +119,12 @@ namespace Homio {
         capabilities->canReceive = buffer[4];
     }
 
+    DeviceCapabilities Component::getCapabilities() {
+        return capabilities_;
+    }
+
+    void Component::setCapabilities(DeviceCapabilities capabilities) {
+        memcpy(&capabilities_, &capabilities, sizeof(DeviceCapabilities));
+    }
+
 }

@@ -25,107 +25,134 @@ using namespace Homio;
 
 // classes
 // Transport
-  // serialize data send
-  // unserialise data receive
+// serialize data send
+// unserialise data receive
 // NRFLiteTransport
 // RF24Transport
 // Device insert NRFiteTransport
 
-class DeviceTest : public Test {
-  public:
+class DeviceTest : public Test
+{
+public:
     DeviceUnderTest *underTest;
     TransportMock *transport;
     CommandPoolMock *commandPool;
     Command *command;
     uint8_t *payload;
 
-  void SetUp() {
-    transport = new TransportMock();
-    commandPool = new CommandPoolMock();
-    underTest = new DeviceUnderTest(transport, commandPool);
-    command = new Command();
-    payload = new uint8_t[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
-    command->payload = payload;
-  }
+    void SetUp()
+    {
+        transport = new TransportMock();
+        commandPool = new CommandPoolMock();
+        underTest = new DeviceUnderTest(transport, commandPool);
+        command = new Command();
+        payload = new uint8_t[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
+        command->payload = payload;
+    }
 
-  void TearDown() {
-    delete underTest;
-    underTest = nullptr;
+    void TearDown()
+    {
+        delete underTest;
+        underTest = nullptr;
 
-    delete transport;
-    transport = nullptr;
+        delete transport;
+        transport = nullptr;
 
-    delete commandPool;
-    commandPool = nullptr;
+        delete commandPool;
+        commandPool = nullptr;
 
-    delete payload;
-    payload = nullptr;
+        delete payload;
+        payload = nullptr;
 
-    delete command;
-    command = nullptr;
-  }
+        delete command;
+        command = nullptr;
+    }
 };
 
-TEST_F(DeviceTest, SendDatapointReturnTrue) {
-  Datapoint datapoint = {};
-  datapoint.id = 1;
-  datapoint.type = DatapointType::INTEGER;
-  datapoint.value_int = 0;
+TEST_F(DeviceTest, SendDatapointReturnTrue)
+{
+    Datapoint datapoint = {};
+    datapoint.id = 1;
+    datapoint.type = DatapointType::INTEGER;
+    datapoint.value_int = 0;
 
-  underTest->addDatapoint(&datapoint);
-  ON_CALL(*commandPool, borrowCommandInstance)
-    .WillByDefault(Return(command));
-  EXPECT_CALL(*commandPool, borrowCommandInstance());
+    underTest->addDatapoint(&datapoint);
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(command));
+    EXPECT_CALL(*commandPool, borrowCommandInstance());
 
-  ASSERT_TRUE(underTest->sendDatapoint(1));
+    ASSERT_TRUE(underTest->sendDatapoint(1));
 }
 
-TEST_F(DeviceTest, SendNonExistingDatapointReturnFalse) {
-  Datapoint datapoint = {};
-  datapoint.id = 1;
-  datapoint.type = DatapointType::INTEGER;
-  datapoint.value_int = 0;
+TEST_F(DeviceTest, SendNonExistingDatapointReturnFalse)
+{
+    Datapoint datapoint = {};
+    datapoint.id = 1;
+    datapoint.type = DatapointType::INTEGER;
+    datapoint.value_int = 0;
 
-  underTest->addDatapoint(&datapoint);
-  EXPECT_CALL(*commandPool, borrowCommandInstance())
-    .Times(0);
+    underTest->addDatapoint(&datapoint);
+    EXPECT_CALL(*commandPool, borrowCommandInstance())
+        .Times(0);
 
-  ASSERT_FALSE(underTest->sendDatapoint(2));
+    ASSERT_FALSE(underTest->sendDatapoint(2));
 }
 
-TEST_F(DeviceTest, SendDatapointEnqueueCommand) {
-  Datapoint datapoint = {};
-  datapoint.id = 1;
-  datapoint.type = DatapointType::INTEGER;
-  datapoint.value_int = 0;
+TEST_F(DeviceTest, SendDatapointEnqueueCommand)
+{
+    Datapoint datapoint = {};
+    datapoint.id = 1;
+    datapoint.type = DatapointType::INTEGER;
+    datapoint.value_int = 0;
 
-  underTest->addDatapoint(&datapoint);
-  ON_CALL(*commandPool, borrowCommandInstance)
-    .WillByDefault(Return(command));
-  EXPECT_CALL(*commandPool, borrowCommandInstance());
+    underTest->addDatapoint(&datapoint);
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(command));
+    EXPECT_CALL(*commandPool, borrowCommandInstance());
 
-  underTest->sendDatapoint(1);
+    underTest->sendDatapoint(1);
 
-  ASSERT_THAT(underTest->getCommandQueueSize(), Eq(1));
+    ASSERT_THAT(underTest->getCommandQueueSize(), Eq(1));
 }
 
-TEST_F(DeviceTest, UnsuccessfulSendDatapointIfNoMoreObjectsInPool) {
-  Datapoint datapoint = {};
-  datapoint.id = 1;
-  datapoint.type = DatapointType::INTEGER;
-  datapoint.value_int = 0;
+TEST_F(DeviceTest, UnsuccessfulSendDatapointIfNoMoreObjectsInPool)
+{
+    Datapoint datapoint = {};
+    datapoint.id = 1;
+    datapoint.type = DatapointType::INTEGER;
+    datapoint.value_int = 0;
 
-  underTest->addDatapoint(&datapoint);
-  ON_CALL(*commandPool, borrowCommandInstance)
-    .WillByDefault(Return(nullptr));
-  EXPECT_CALL(*commandPool, borrowCommandInstance());
+    underTest->addDatapoint(&datapoint);
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(nullptr));
+    EXPECT_CALL(*commandPool, borrowCommandInstance());
 
-  ASSERT_FALSE(underTest->sendDatapoint(1));
+    ASSERT_FALSE(underTest->sendDatapoint(1));
 }
 
-/**
- * Unserialize LOCK_DELIVER command and retreive the communication port
- * check for the lock if the lock_deliver command is present
- * 
- * 
- **/
+TEST_F(DeviceTest, WhenSendingDatapointFromAndToAddressesShouldBePopulated) {
+    Datapoint datapoint = {};
+    datapoint.id = 1;
+    datapoint.type = DatapointType::INTEGER;
+    datapoint.value_int = 0;
+
+    underTest->addDatapoint(&datapoint);
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(command));
+    EXPECT_CALL(*commandPool, borrowCommandInstance());
+    
+    underTest->sendDatapoint(1);
+
+    Command *actual = underTest->peekCommand();
+
+    ASSERT_THAT(actual, Field(&Command::fromAddress, Eq(10)));
+    ASSERT_THAT(actual, Field(&Command::toAddress, Eq(1)));
+}
+
+TEST_F(DeviceTest, WhenDeviceInitializedCapabilitiesAreSetToDefault)
+{
+    DeviceCapabilities capabilities = underTest->getCapabilities();
+
+    ASSERT_THAT(capabilities, Field(&DeviceCapabilities::heartbeatInterval, Eq(HOMIO_DEVICE_CAPABILITIES_HEARTBEAT_INTERVAL)));
+    ASSERT_THAT(capabilities, Field(&DeviceCapabilities::canReceive, Eq(HOMIO_DEVICE_CAPABILITIES_CAN_RECEIVE)));
+}

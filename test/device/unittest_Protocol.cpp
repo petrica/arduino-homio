@@ -10,7 +10,7 @@ class ProtocolTest : public Test
 public:
     DeviceUnderTest *underTest;
     TransportMock *transport;
-    CommandPool *commandPool;
+    CommandPoolMock *commandPool;
     uint8_t *payload;
 
     void SetUp()
@@ -31,6 +31,9 @@ public:
 
         delete[] payload;
         payload = nullptr;
+
+        delete commandPool;
+        commandPool = nullptr;
     }
 };
 
@@ -62,6 +65,10 @@ TEST_F(ProtocolTest, WhenInLockRequestStateSendLockRequestCommand)
     Command actual = {};
 
     underTest->setState(DeviceState::LOCK_REQUEST);
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&actual));
+    EXPECT_CALL(*commandPool, borrowCommandInstance);
+    EXPECT_CALL(*commandPool, returnCommandInstance);
     EXPECT_CALL(*transport, sendCommand(
                                Field(&Command::type, Eq(CommandType::LOCK_REQUEST))));
 
@@ -71,10 +78,15 @@ TEST_F(ProtocolTest, WhenInLockRequestStateSendLockRequestCommand)
 TEST_F(ProtocolTest, WhenInLockRequestAndReceiveEmptyResponseStatusShouldReturnToIdle)
 {
     Command expectedCommand = {};
+    Command actual = {};
     underTest->setState(DeviceState::LOCK_REQUEST);
 
     ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&actual));
+    EXPECT_CALL(*commandPool, borrowCommandInstance);
+    EXPECT_CALL(*commandPool, returnCommandInstance);
     EXPECT_CALL(*transport, sendCommand(_));
     EXPECT_CALL(*transport, receiveAck(_))
         .WillOnce(Invoke([=](Command *receivedCommand) -> bool
@@ -89,6 +101,7 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceiveEmptyResponseStatusShouldReturnT
 }
 
 TEST_F(ProtocolTest, WhenInLockRequestAndReceiveLockForOtherDeviceThenStatusIdDelay) {
+    Command actual = {};
     Command expectedCommand = {};
     expectedCommand.type = CommandType::LOCK_DELIVER;
     expectedCommand.fromAddress = 1;
@@ -98,6 +111,10 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceiveLockForOtherDeviceThenStatusIdDe
 
     underTest->setState(DeviceState::LOCK_REQUEST);
     
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&actual));
+    EXPECT_CALL(*commandPool, borrowCommandInstance);
+    EXPECT_CALL(*commandPool, returnCommandInstance);
     ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(_));
@@ -114,6 +131,7 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceiveLockForOtherDeviceThenStatusIdDe
 }
 
 TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenStatusIsDataSend) {
+    Command actual = {};
     Command expectedCommand = {};
     expectedCommand.type = CommandType::LOCK_DELIVER;
     expectedCommand.fromAddress = 1;
@@ -123,6 +141,10 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenStatusIsDataSend
 
     underTest->setState(DeviceState::LOCK_REQUEST);
 
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&actual));
+    EXPECT_CALL(*commandPool, borrowCommandInstance);
+    EXPECT_CALL(*commandPool, returnCommandInstance);
     ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(_));
@@ -139,6 +161,7 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenStatusIsDataSend
 }
 
 TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenHubReceiveAddressShouldBePopulated) {
+    Command actual = {};
     Command expectedCommand = {};
     expectedCommand.type = CommandType::LOCK_DELIVER;
     expectedCommand.fromAddress = 1;
@@ -149,6 +172,10 @@ TEST_F(ProtocolTest, WhenInLockRequestAndReceivedLockRequestThenHubReceiveAddres
 
     underTest->setState(DeviceState::LOCK_REQUEST);
 
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&actual));
+    EXPECT_CALL(*commandPool, borrowCommandInstance);
+    EXPECT_CALL(*commandPool, returnCommandInstance);
     ON_CALL(*transport, sendCommand(_))
         .WillByDefault(Return(true));
     EXPECT_CALL(*transport, sendCommand(_));
