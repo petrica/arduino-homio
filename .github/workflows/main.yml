@@ -36,9 +36,6 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install --upgrade platformio
-    - name: Install library dependencies
-      run: |
-        pio lib -g install google/googletest@^1.10.0
     - name: Install lcov
       run: |
         sudo apt-get update
