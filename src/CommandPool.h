@@ -1,5 +1,5 @@
-#ifndef _HomioComponentPool_h_
-#define _HomioComponentPool_h_
+#ifndef _HomioCommandPool_h_
+#define _HomioCommandPool_h_
 
 #include <Homio.h>
 

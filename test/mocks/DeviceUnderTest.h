@@ -6,41 +6,13 @@
 namespace Homio {
     class DeviceUnderTest: public Device {
         public:
-            DeviceUnderTest(Transport *transport, CommandPool *commandPool): 
-                Device(10, 1, transport, commandPool) {
+            DeviceUnderTest(DeviceTransport *deviceTransport): 
+                Device(deviceTransport) {
 
             }
 
-            bool enqueueCommand(Command *command) {
-                return Device::enqueueCommand(command);
-            }
-
-            Command *dequeueCommand() {
-                return Device::dequeueCommand();
-            }
-
-            Command *peekCommand() {
-                return Device::peekCommand();
-            }
-
-            uint8_t getCommandQueueSize() {
-                return commandQueueSize_;
-            }
-
-            void setState(DeviceState state) {
-                state_ = state;
-            }
-
-            DeviceState getState() {
-                return state_;
-            }
-
-            uint8_t getHubReceiveAddress() {
-                return hubReceiveAddress_;
-            }
-
-            void setHubReceiveAddress(uint8_t address) {
-                hubReceiveAddress_ = address;
+            uint8_t getDatapointsCount() {
+                return datapointsCount_;
             }
         };
 }

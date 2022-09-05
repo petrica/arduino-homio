@@ -32,21 +32,4 @@ namespace Homio {
         
         return false;
     }
-
-    uint8_t Transport::serializeCommand(const Command *command, uint8_t *buffer) {
-        buffer[0] = static_cast<uint8_t>(command->type);
-        buffer[1] = command->fromAddress;
-        buffer[2] = command->toAddress;
-        buffer[3] = command->payloadSize;
-        memcpy(buffer + HOMIO_COMMAND_HEADER_SIZE, command->payload, command->payloadSize);
-
-        return HOMIO_COMMAND_HEADER_SIZE + command->payloadSize;
-    }
-
-    void Transport::unserializeCommand(Command *command, uint8_t *buffer) {
-        command->type = (CommandType)buffer[0];
-        command->fromAddress = buffer[1];
-        command->toAddress = buffer[2];
-        command->payloadSize = buffer[3];
-    }
 }

@@ -3,13 +3,10 @@
 
 #include <Homio.h>
 #include <Utils.h>
-#include <Component.h>
-#ifndef UNITTEST_DEVICE
-    #include <Transport.h>
-    #include <CommandPool.h>
+#ifndef UNIT_TEST
+    #include <DeviceTransport.h>
 #else
-    #include <TransportMock.h>
-    #include <CommandPoolMock.h>
+    #include <DeviceTransportMock.h>
 #endif
 
 namespace Homio {
@@ -18,36 +15,21 @@ namespace Homio {
     class DeviceUnderTest;
     #endif
 
-    class Device: public Component {
+    class Device {
 
         public:
-            Device(uint8_t deviceAddress, uint8_t hubAddress, Transport *transport, CommandPool *commandPool);
+            Device(DeviceTransport *deviceTransport);
 
+            void addDatapoint(Datapoint *datapoint);
+            Datapoint *getDatapoint(uint8_t datapointId);
             bool sendDatapoint(const uint8_t datapointId);
 
             void tick();
-            
-        protected:
-            bool enqueueCommand(Command *command);
-            Command *dequeueCommand();
-            Command *peekCommand();
 
         private:
-            bool sendLockRequest(Command *receiveCommand);
-            bool sendCommand(Command *command);
-
-            Command *commandQueue_[HOMIO_COMMAND_QUEUE_SIZE];
-            uint8_t commandQueueSize_ = 0;
-            uint8_t commandQueueFirst_ = 0;
-
-            DeviceState state_;
-
-            Transport *transport_;
-            CommandPool *commandPool_;
-
-            const uint8_t deviceAddress_;
-            const uint8_t hubAddress_;
-            uint8_t hubReceiveAddress_;
+            DeviceTransport *transport_;
+            Datapoint *datapoints_[HOMIO_DEVICE_DATAPOINT_MAX_COUNT];
+            uint8_t datapointsCount_ = 0;
 
         #ifdef UNIT_TEST
         friend class DeviceUnderTest;

@@ -54,6 +54,13 @@ namespace Homio
         DATA_SEND = 0x03
     };
 
+    enum class TransportState : uint8_t {
+        IDLE = 0x00,
+        LOCK_REQUEST = 0x01,
+        LOCK_DELAY = 0x02,
+        DATA_SEND = 0x03
+    };
+
     struct DeviceCapabilities {
         uint32_t heartbeatInterval;
         bool canReceive;

@@ -20,6 +20,10 @@ void delay(time_t a) {
   arduinoMock->delay(a);
 }
 
+int min(int a, int b) {
+    return (a < b) ? a : b;
+}
+
 int main(int argc, char** argv) {
     std::cout << "Running main() from gmock_main.cc\n";
     // Since Google Mock depends on Google Test, InitGoogleMock() is

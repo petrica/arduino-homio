@@ -1,18 +1,24 @@
 #include <gmock/gmock.h>
-#include <Transport.h>
+#include <DeviceTransportUnderTest.h>
 #include <Matchers.h>
 
 using namespace ::testing;
 using namespace Homio;
 
-class TransportTest : public Test {
+class DeviceTransportTest : public Test {
   public:
-    Transport *underTest;
+    DeviceTransportUnderTest *underTest;
+    CommandPoolMock *commandPool;
+    CommandQueueMock *commandQueue;
     NRFLiteMock *radio;
+    uint8_t deviceAddress = 10;
+    uint8_t hubAddress = 1;
 
   void SetUp() {
     radio = new NRFLiteMock();
-    underTest = new Transport(radio);
+    commandPool = new CommandPoolMock();
+    commandQueue = new CommandQueueMock();
+    underTest = new DeviceTransportUnderTest(deviceAddress, hubAddress, radio, commandPool, commandQueue);
   }
 
   void TearDown() {
@@ -21,30 +27,16 @@ class TransportTest : public Test {
 
     delete radio;
     radio = nullptr;
+
+    delete commandPool;
+    commandPool = nullptr;
+
+    delete commandQueue;
+    commandQueue = nullptr;
   }
 };
 
-TEST_F(TransportTest, CallSendWhenSendingHeartbeatCommand) {
-  Command command = {};
-  command.type = CommandType::HEARTBEAT;
-  command.fromAddress = 10;
-  command.toAddress = 1;
-  command.payload = {};
-  command.payloadSize = 0;
-  
-  uint8_t expected[4];
-  expected[0] = static_cast<uint8_t>(command.type);
-  expected[1] = command.fromAddress;
-  expected[2] = command.toAddress;
-  expected[3] = command.payloadSize;
-
-  EXPECT_CALL(*radio, send(1, EqualToArray(expected, 4), 4))
-      .Times(AtLeast(1));
-
-  underTest->sendCommand(&command);
-}
-
-TEST_F(TransportTest, CallSendWhenSendingReportCommand) {
+TEST_F(DeviceTransportTest, CallSendWhenSendingReportCommand) {
   uint8_t payload[4] = {1, 2, 3, 4};
   Command command = {};
   command.type = CommandType::DATAPOINT_REPORT;
@@ -66,7 +58,7 @@ TEST_F(TransportTest, CallSendWhenSendingReportCommand) {
   underTest->sendCommand(&command);
 }
 
-TEST_F(TransportTest, CallSendWithCustomPayload) {
+TEST_F(DeviceTransportTest, CallSendWithCustomPayload) {
   uint8_t payload[5] = {1, 2, 3, 4, 5};
   Command command = {};
   command.type = CommandType::DATAPOINT_REPORT;
@@ -88,7 +80,7 @@ TEST_F(TransportTest, CallSendWithCustomPayload) {
   underTest->sendCommand(&command);
 }
 
-TEST_F(TransportTest, SendCommandToDifferentClient) {
+TEST_F(DeviceTransportTest, SendCommandToDifferentClient) {
   Command command = {};
   command.type = CommandType::DATAPOINT_REPORT;
   command.fromAddress = 2;
@@ -106,7 +98,7 @@ TEST_F(TransportTest, SendCommandToDifferentClient) {
   underTest->sendCommand(&command);
 }
 
-TEST_F(TransportTest, SendCommandToCustomClient) {
+TEST_F(DeviceTransportTest, SendCommandToCustomClient) {
   uint8_t customAddress = 2;
   Command command = {};
   command.toAddress = 1;
@@ -117,7 +109,7 @@ TEST_F(TransportTest, SendCommandToCustomClient) {
   underTest->sendCommand(&command, customAddress);
 }
 
-TEST_F(TransportTest, ReturnTrueWhenSuccessfulSendCommand) {
+TEST_F(DeviceTransportTest, ReturnTrueWhenSuccessfulSendCommand) {
   Command command = {};
 
   ON_CALL(*radio, send)
@@ -128,7 +120,7 @@ TEST_F(TransportTest, ReturnTrueWhenSuccessfulSendCommand) {
   ASSERT_TRUE(underTest->sendCommand(&command));
 }
 
-TEST_F(TransportTest, ReturnFalseWhenUnsuccessulSendCommand) {
+TEST_F(DeviceTransportTest, ReturnFalseWhenUnsuccessulSendCommand) {
   Command commnad = {};
 
   ON_CALL(*radio, send)
@@ -139,7 +131,7 @@ TEST_F(TransportTest, ReturnFalseWhenUnsuccessulSendCommand) {
   ASSERT_FALSE(underTest->sendCommand(&commnad));
 }
 
-TEST_F(TransportTest, ReceiveConfirmCommand) {
+TEST_F(DeviceTransportTest, ReceiveConfirmCommand) {
   Command command = {};
 
   underTest->receiveCommand(&command);
@@ -147,7 +139,7 @@ TEST_F(TransportTest, ReceiveConfirmCommand) {
   ASSERT_THAT(command.type, Eq(CommandType::CONFIRM));
 }
 
-TEST_F(TransportTest, AckReturnedNoData) {
+TEST_F(DeviceTransportTest, AckReturnedNoData) {
   Command command = {};
 
   ON_CALL(*radio, hasAckData)
@@ -157,7 +149,7 @@ TEST_F(TransportTest, AckReturnedNoData) {
   ASSERT_FALSE(underTest->receiveAck(&command));
 }
 
-TEST_F(TransportTest, AckReturnedConfirmCommand) {
+TEST_F(DeviceTransportTest, AckReturnedConfirmCommand) {
   Command command = {};
 
   uint8_t expected[4];
@@ -180,7 +172,7 @@ TEST_F(TransportTest, AckReturnedConfirmCommand) {
   ASSERT_THAT(command.type, Eq(CommandType::CONFIRM));
 }
 
-TEST_F(TransportTest, AckReturnedDatapointDeliveredCommand) {
+TEST_F(DeviceTransportTest, AckReturnedDatapointDeliveredCommand) {
   Command command = {};
 
   uint8_t expected[4];

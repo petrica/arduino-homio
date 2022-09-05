@@ -16,10 +16,6 @@ namespace Homio {
             void receiveCommand(Command *command);
             bool receiveAck(Command *command);
 
-        protected:
-            uint8_t serializeCommand(const Command *command, uint8_t *buffer);
-            void unserializeCommand(Command *command, uint8_t *buffer);
-
         private:
             NRFLite *radio_;
     };

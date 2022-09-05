@@ -34,20 +34,13 @@ using namespace Homio;
 class DeviceTest : public Test
 {
 public:
+    DeviceTransportMock *transport;
     DeviceUnderTest *underTest;
-    TransportMock *transport;
-    CommandPoolMock *commandPool;
-    Command *command;
-    uint8_t *payload;
 
     void SetUp()
     {
-        transport = new TransportMock();
-        commandPool = new CommandPoolMock();
-        underTest = new DeviceUnderTest(transport, commandPool);
-        command = new Command();
-        payload = new uint8_t[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
-        command->payload = payload;
+        transport = new NiceMock<DeviceTransportMock>();
+        underTest = new DeviceUnderTest(transport);
     }
 
     void TearDown()
@@ -57,15 +50,6 @@ public:
 
         delete transport;
         transport = nullptr;
-
-        delete commandPool;
-        commandPool = nullptr;
-
-        delete payload;
-        payload = nullptr;
-
-        delete command;
-        command = nullptr;
     }
 };
 
@@ -77,9 +61,8 @@ TEST_F(DeviceTest, SendDatapointReturnTrue)
     datapoint.value_int = 0;
 
     underTest->addDatapoint(&datapoint);
-    ON_CALL(*commandPool, borrowCommandInstance)
-        .WillByDefault(Return(command));
-    EXPECT_CALL(*commandPool, borrowCommandInstance());
+    ON_CALL(*transport, writeDatapoint)
+        .WillByDefault(Return(true));
 
     ASSERT_TRUE(underTest->sendDatapoint(1));
 }
@@ -92,13 +75,11 @@ TEST_F(DeviceTest, SendNonExistingDatapointReturnFalse)
     datapoint.value_int = 0;
 
     underTest->addDatapoint(&datapoint);
-    EXPECT_CALL(*commandPool, borrowCommandInstance())
-        .Times(0);
 
     ASSERT_FALSE(underTest->sendDatapoint(2));
 }
 
-TEST_F(DeviceTest, SendDatapointEnqueueCommand)
+TEST_F(DeviceTest, SendDatapointWritesToTransport)
 {
     Datapoint datapoint = {};
     datapoint.id = 1;
@@ -106,53 +87,51 @@ TEST_F(DeviceTest, SendDatapointEnqueueCommand)
     datapoint.value_int = 0;
 
     underTest->addDatapoint(&datapoint);
-    ON_CALL(*commandPool, borrowCommandInstance)
-        .WillByDefault(Return(command));
-    EXPECT_CALL(*commandPool, borrowCommandInstance());
+
+    EXPECT_CALL(*transport, writeDatapoint(Eq(&datapoint)));
 
     underTest->sendDatapoint(1);
-
-    ASSERT_THAT(underTest->getCommandQueueSize(), Eq(1));
 }
 
-TEST_F(DeviceTest, UnsuccessfulSendDatapointIfNoMoreObjectsInPool)
-{
-    Datapoint datapoint = {};
-    datapoint.id = 1;
-    datapoint.type = DatapointType::INTEGER;
-    datapoint.value_int = 0;
-
-    underTest->addDatapoint(&datapoint);
-    ON_CALL(*commandPool, borrowCommandInstance)
-        .WillByDefault(Return(nullptr));
-    EXPECT_CALL(*commandPool, borrowCommandInstance());
-
-    ASSERT_FALSE(underTest->sendDatapoint(1));
+TEST_F(DeviceTest, DatapointsListIsEmpty) {
+  uint8_t listCount = underTest->getDatapointsCount();
+  ASSERT_THAT(listCount, Eq(0));
 }
 
-TEST_F(DeviceTest, WhenSendingDatapointFromAndToAddressesShouldBePopulated) {
-    Datapoint datapoint = {};
-    datapoint.id = 1;
-    datapoint.type = DatapointType::INTEGER;
-    datapoint.value_int = 0;
-
-    underTest->addDatapoint(&datapoint);
-    ON_CALL(*commandPool, borrowCommandInstance)
-        .WillByDefault(Return(command));
-    EXPECT_CALL(*commandPool, borrowCommandInstance());
-    
-    underTest->sendDatapoint(1);
-
-    Command *actual = underTest->peekCommand();
-
-    ASSERT_THAT(actual, Field(&Command::fromAddress, Eq(10)));
-    ASSERT_THAT(actual, Field(&Command::toAddress, Eq(1)));
+TEST_F(DeviceTest, DatapointsListHasCountOfOne) {
+  Datapoint datapoint;
+  underTest->addDatapoint(&datapoint);
+  uint8_t listCount = underTest->getDatapointsCount();
+  ASSERT_THAT(listCount, Eq(1));
 }
 
-TEST_F(DeviceTest, WhenDeviceInitializedCapabilitiesAreSetToDefault)
-{
-    DeviceCapabilities capabilities = underTest->getCapabilities();
+// TEST_F(DeviceTest, WhenDeviceInitializedCapabilitiesAreSetToDefault)
+// {
+//     DeviceCapabilities capabilities = underTest->getCapabilities();
 
-    ASSERT_THAT(capabilities, Field(&DeviceCapabilities::heartbeatInterval, Eq(HOMIO_DEVICE_CAPABILITIES_HEARTBEAT_INTERVAL)));
-    ASSERT_THAT(capabilities, Field(&DeviceCapabilities::canReceive, Eq(HOMIO_DEVICE_CAPABILITIES_CAN_RECEIVE)));
-}
+//     ASSERT_THAT(capabilities, Field(&DeviceCapabilities::heartbeatInterval, Eq(HOMIO_DEVICE_CAPABILITIES_HEARTBEAT_INTERVAL)));
+//     ASSERT_THAT(capabilities, Field(&DeviceCapabilities::canReceive, Eq(HOMIO_DEVICE_CAPABILITIES_CAN_RECEIVE)));
+// }
+
+// TEST_F(DatapointSerializerTest, FailToDeserializeNonexistingDatapoint) {
+//     datapoint.id = 1;
+//     datapoint.type = DatapointType::BOOLEAN;
+//     datapoint.value_bool = true;
+
+//     underTest->addDatapoint(&datapoint);
+//     underTest->serializeDatapoint(1, buffer);
+
+//     buffer[0] = 2;
+
+//     Datapoint *expectedDatapoint = underTest->unserializeDatapoint(buffer);
+
+//     ASSERT_THAT(expectedDatapoint, Eq(nullptr));
+// }
+
+// TEST_F(DatapointSerializerTest, SerailizerReturnsEmptyIfNoDatapointToSerialize) {
+//   datapoint.id = 1;
+//   datapoint.type = DatapointType::BOOLEAN;
+//   datapoint.value_bool = true;
+
+//   ASSERT_THAT(underTest->serializeDatapoint(1, buffer), Eq(0));
+// }

@@ -1,7 +1,6 @@
 #ifndef _HomioCommandPool_h_
 #define _HomioCommandPool_h_
 
-#include <Arduino.h>
 #include <gmock/gmock.h>
 #include <Homio.h>
 

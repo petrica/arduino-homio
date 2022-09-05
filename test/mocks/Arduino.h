@@ -19,6 +19,7 @@ void setup(void);
 void loop(void);
 
 void delay(time_t);
+int min(int a, int b);
 
 #ifdef __cplusplus
 } // extern "C"

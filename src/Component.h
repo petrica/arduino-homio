@@ -11,16 +11,10 @@ namespace Homio {
     class Component {
 
         public:
-            void addDatapoint(Datapoint *datapoint);
-            Datapoint *getDatapoint(uint8_t datapointId);
-
             void setCapabilities(DeviceCapabilities capabilities);
             DeviceCapabilities getCapabilities();
 
         protected:
-            uint8_t serializeDatapoint(uint8_t datapointId, uint8_t *buffer);
-            Datapoint *unserializeDatapoint(uint8_t *buffer);
-
             uint8_t serializeDeviceCapabilities(DeviceCapabilities *capabilities, uint8_t *buffer);
             void unserializeDeviceCapabilities(uint8_t *buffer, DeviceCapabilities *capabilities);
 

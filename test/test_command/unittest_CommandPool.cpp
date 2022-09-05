@@ -6,24 +6,24 @@ using namespace ::testing;
 using namespace Homio;
 
 class Homio::CommandPoolUnderTest: public CommandPool {
-  public:
-    uint8_t getPoolCount() {
-        return CommandPool::poolCount_;
-    }
+    public:
+        uint8_t getPoolCount() {
+            return CommandPool::poolCount_;
+        }
 };
 
 class CommandPoolTest : public Test {
-  public:
-    CommandPoolUnderTest *underTest;
+    public:
+        CommandPoolUnderTest *underTest;
 
-  void SetUp() {
-    underTest = new CommandPoolUnderTest();
-  }
+    void SetUp() {
+        underTest = new CommandPoolUnderTest();
+    }
 
-  void TearDown() {
-    delete underTest;
-    underTest = nullptr;
-  }
+    void TearDown() {
+        delete underTest;
+        underTest = nullptr;
+    }
 };
 
 TEST_F(CommandPoolTest, GetObjectInstanceWhenRequested) {
