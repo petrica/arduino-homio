@@ -137,7 +137,7 @@ TEST_F(DeviceTransportProtocolTest, WhenInLockRequestAndReceiveLockForOtherDevic
     EXPECT_CALL(*radio, readData(_))
         .WillOnce(Invoke([=](void *data) -> void
         { 
-            memcpy((void*)data, buffer, HOMIO_BUFFER_SIZE);
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
         }));
 
     underTest->tick();
@@ -171,7 +171,7 @@ TEST_F(DeviceTransportProtocolTest, WhenInLockRequestAndReceivedLockRequestThenS
     EXPECT_CALL(*radio, readData(_))
         .WillOnce(Invoke([=](void *data) -> void
         { 
-            memcpy((void*)data, buffer, HOMIO_BUFFER_SIZE);
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
         }));
 
     underTest->tick();
@@ -190,6 +190,7 @@ TEST_F(DeviceTransportProtocolTest, WhenInLockRequestAndReceivedLockRequestThenH
     expectedCommand.toAddress = 10;
     expectedCommand.payloadSize = 1;
     expectedCommand.payload = expectedPayload;
+    serializeCommand(&expectedCommand, buffer);
 
     underTest->setState(TransportState::LOCK_REQUEST);
 
@@ -204,7 +205,7 @@ TEST_F(DeviceTransportProtocolTest, WhenInLockRequestAndReceivedLockRequestThenH
     EXPECT_CALL(*radio, readData(_))
         .WillOnce(Invoke([=](void *data) -> void
         { 
-            memcpy((void*)data, buffer, HOMIO_BUFFER_SIZE);
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
         }));
 
     underTest->tick();
@@ -310,7 +311,7 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSendForDeviceThenCommandQueueIsDeque
     EXPECT_CALL(*radio, readData(_))
         .WillOnce(Invoke([=](void *data) -> void
         { 
-            memcpy((void*)data, buffer, HOMIO_BUFFER_SIZE);
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
         }));
     EXPECT_CALL(*commandQueue, dequeue)
         .Times(1);
@@ -342,7 +343,7 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSendIsNotConfirmedThenCommandQueueIs
     EXPECT_CALL(*radio, readData(_))
         .WillOnce(Invoke([=](void *data) -> void
         { 
-            memcpy((void*)data, buffer, HOMIO_BUFFER_SIZE);
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
         }));
     EXPECT_CALL(*commandQueue, dequeue)
         .Times(0);
