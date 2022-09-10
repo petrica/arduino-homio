@@ -23,7 +23,7 @@ public:
         commandPool = new CommandPoolMock();
         commandQueue = new NiceMock<CommandQueueMock>();
         underTest = new DeviceTransportUnderTest(deviceAddress, hubAddress, radio, commandPool, commandQueue);
-        payload = new uint8_t[10];
+        payload = new uint8_t[HOMIO_COMMAND_PAYLOAD_SIZE];
         buffer = new uint8_t[HOMIO_BUFFER_SIZE];
     }
 
@@ -224,7 +224,7 @@ TEST_F(DeviceTransportProtocolTest, WhenInLockDelayThenDelay) {
     releaseArduinoMock();
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenInDataSendThenReturnToIdle) {
+TEST_F(DeviceTransportProtocolTest, WhenInDataSentThenReturnToIdle) {
     underTest->setState(TransportState::DATA_SEND);
 
     underTest->tick();
@@ -232,8 +232,12 @@ TEST_F(DeviceTransportProtocolTest, WhenInDataSendThenReturnToIdle) {
     ASSERT_THAT(underTest->getState(), Eq(TransportState::IDLE));
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenInDataSendThenSendDatapointReportCommand) {
+TEST_F(DeviceTransportProtocolTest, WhenInDataSentThenSendDatapointReportCommand) {
     underTest->setHubReceiveAddress(2);
+    
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
 
     Command expectedCommand = {};
     expectedCommand.fromAddress = 10;
@@ -245,21 +249,29 @@ TEST_F(DeviceTransportProtocolTest, WhenInDataSendThenSendDatapointReportCommand
 
     ON_CALL(*commandQueue, peek)
         .WillByDefault(Return(&expectedCommand));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
     EXPECT_CALL(*radio, send(2, EqualToArray(buffer, size), size));
 
     underTest->tick();
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenDataSendFailsThenCommandQueueIsNotDequeued) {
+TEST_F(DeviceTransportProtocolTest, WhenDataSentFailsThenCommandQueueIsNotDequeued) {
     Command expectedCommand = {};
     expectedCommand.fromAddress = 10;
     expectedCommand.toAddress = 1;
     expectedCommand.type = CommandType::DATAPOINT_REPORT;
 
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
+
     underTest->setState(TransportState::DATA_SEND);
 
     ON_CALL(*commandQueue, peek)
         .WillByDefault(Return(&expectedCommand));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
     ON_CALL(*radio, send)
         .WillByDefault(Return(0));
     EXPECT_CALL(*commandQueue, dequeue)
@@ -268,7 +280,7 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSendFailsThenCommandQueueIsNotDequeu
     underTest->tick();
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenDataSendAndNoAckTheQueueIsNotDequeued) {
+TEST_F(DeviceTransportProtocolTest, WhenDataSentAndNoAckTheQueueIsNotDequeued) {
     Command expectedCommand = {};
     expectedCommand.fromAddress = 10;
     expectedCommand.toAddress = 1;
@@ -288,7 +300,7 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSendAndNoAckTheQueueIsNotDequeued) {
     underTest->tick();
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenDataSendForDeviceThenCommandQueueIsDequeued) {
+TEST_F(DeviceTransportProtocolTest, WhenDataSentForDeviceThenCommandQueueIsDequeued) {
     Command sentCommand = {};
     sentCommand.fromAddress = 10;
     sentCommand.toAddress = 1;
@@ -300,10 +312,53 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSendForDeviceThenCommandQueueIsDeque
     expectedCommand.type = CommandType::CONFIRM;
     serializeCommand(&expectedCommand, buffer);
 
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
+
     underTest->setState(TransportState::DATA_SEND);
 
     ON_CALL(*commandQueue, peek)
         .WillByDefault(Return(&sentCommand));
+    ON_CALL(*radio, send)
+        .WillByDefault(Return(1));
+    ON_CALL(*radio, hasAckData)
+        .WillByDefault(Return(true));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([=](void *data) -> void
+        { 
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
+        }));
+    EXPECT_CALL(*commandQueue, dequeue)
+        .Times(1);
+
+    underTest->tick();
+}
+
+TEST_F(DeviceTransportProtocolTest, WhenDataSentAndGotBackDatapointDeliverThenCommandShouldBeDequeued) {
+    Command sentCommand = {};
+    sentCommand.fromAddress = 10;
+    sentCommand.toAddress = 1;
+    sentCommand.type = CommandType::DATAPOINT_REPORT;
+
+    Command expectedCommand = {};
+    expectedCommand.fromAddress = 1;
+    expectedCommand.toAddress = 10;
+    expectedCommand.type = CommandType::DATAPOINT_DELIVER;
+    serializeCommand(&expectedCommand, buffer);
+
+    underTest->setState(TransportState::DATA_SEND);
+
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
+
+    ON_CALL(*commandQueue, peek)
+        .WillByDefault(Return(&sentCommand));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
     ON_CALL(*radio, send)
         .WillByDefault(Return(1));
     ON_CALL(*radio, hasAckData)
@@ -319,39 +374,7 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSendForDeviceThenCommandQueueIsDeque
     underTest->tick();
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenDataSendIsNotConfirmedThenCommandQueueIsNotDequeued) {
-    Command sentCommand = {};
-    sentCommand.fromAddress = 10;
-    sentCommand.toAddress = 1;
-    sentCommand.type = CommandType::DATAPOINT_REPORT;
-
-    Command expectedCommand = {};
-    expectedCommand.fromAddress = 1;
-    expectedCommand.toAddress = 10;
-    expectedCommand.type = CommandType::DATAPOINT_DELIVER;
-    serializeCommand(&expectedCommand, buffer);
-
-    underTest->setState(TransportState::DATA_SEND);
-   
-
-    ON_CALL(*commandQueue, peek)
-        .WillByDefault(Return(&sentCommand));
-    ON_CALL(*radio, send)
-        .WillByDefault(Return(1));
-    ON_CALL(*radio, hasAckData)
-        .WillByDefault(Return(true));
-    EXPECT_CALL(*radio, readData(_))
-        .WillOnce(Invoke([=](void *data) -> void
-        { 
-            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
-        }));
-    EXPECT_CALL(*commandQueue, dequeue)
-        .Times(0);
-
-    underTest->tick();
-}
-
-TEST_F(DeviceTransportProtocolTest, WhenInDataSendAndQueueEmptyThenDontSend) {
+TEST_F(DeviceTransportProtocolTest, WhenInDataSentAndQueueEmptyThenDontSend) {
     underTest->setState(TransportState::DATA_SEND);
 
     ON_CALL(*commandQueue, peek)
@@ -362,8 +385,7 @@ TEST_F(DeviceTransportProtocolTest, WhenInDataSendAndQueueEmptyThenDontSend) {
     underTest->tick();
 }
 
-TEST_F(DeviceTransportProtocolTest, WhenInLockRequestModeAndNoCommandInstanceAvailableBecomeIdle)
-{
+TEST_F(DeviceTransportProtocolTest, WhenInLockRequestModeAndNoCommandInstanceAvailableBecomeIdle) {
     underTest->setState(TransportState::LOCK_REQUEST);
 
     ON_CALL(*commandPool, borrowCommandInstance)
@@ -374,6 +396,134 @@ TEST_F(DeviceTransportProtocolTest, WhenInLockRequestModeAndNoCommandInstanceAva
     ASSERT_THAT(underTest->getState(), Eq(TransportState::IDLE));
 }
 
+TEST_F(DeviceTransportProtocolTest, WhenDataSentAndGotBackConfirmedThenDatapointIdShouldBeZero) {
+    Command sentCommand = {};
+    sentCommand.fromAddress = 10;
+    sentCommand.toAddress = 1;
+    sentCommand.type = CommandType::DATAPOINT_REPORT;
+
+    Command expectedCommand = {};
+    expectedCommand.fromAddress = 1;
+    expectedCommand.toAddress = 10;
+    expectedCommand.type = CommandType::CONFIRM;
+    serializeCommand(&expectedCommand, buffer);
+
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
+
+    underTest->setState(TransportState::DATA_SEND);
+
+    ON_CALL(*commandQueue, peek)
+        .WillByDefault(Return(&sentCommand));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
+    ON_CALL(*radio, send)
+        .WillByDefault(Return(1));
+    ON_CALL(*radio, hasAckData)
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([=](void *data) -> void
+        { 
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
+        }));
+
+    underTest->tick();
+
+    ASSERT_THAT(underTest->getDatapointId(), Eq(0));
+}
+
+TEST_F(DeviceTransportProtocolTest, WhenDataSentAndGotBackDatapointDeliverThenDatapointIdShouldBeReturned) {
+    Command sentCommand = {};
+    sentCommand.fromAddress = 10;
+    sentCommand.toAddress = 1;
+    sentCommand.type = CommandType::DATAPOINT_REPORT;
+
+    Command expectedCommand = {};
+    expectedCommand.fromAddress = 1;
+    expectedCommand.toAddress = 10;
+    expectedCommand.type = CommandType::DATAPOINT_DELIVER;
+
+    Datapoint expectedDatapoint = {};
+    expectedDatapoint.id = 1;
+    expectedDatapoint.type = DatapointType::BOOLEAN;
+    expectedDatapoint.value_bool = true;
+    expectedCommand.payloadSize = serializeDatapoint(&expectedDatapoint, payload);
+    expectedCommand.payload = payload;
+    serializeCommand(&expectedCommand, buffer);
+
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
+
+    underTest->setState(TransportState::DATA_SEND);
+
+    ON_CALL(*commandQueue, peek)
+        .WillByDefault(Return(&sentCommand));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
+    ON_CALL(*radio, send)
+        .WillByDefault(Return(1));
+    ON_CALL(*radio, hasAckData)
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([=](void *data) -> void
+        { 
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
+        }));
+
+    underTest->tick();
+
+    ASSERT_THAT(underTest->getDatapointId(), Eq(expectedDatapoint.id));
+}
+
+TEST_F(DeviceTransportProtocolTest, WhenDataSentAndGotBackDatapointDeliverThenDatapointShouldBeReturned) {
+    Command sentCommand = {};
+    sentCommand.fromAddress = 10;
+    sentCommand.toAddress = 1;
+    sentCommand.type = CommandType::DATAPOINT_REPORT;
+
+    Command expectedCommand = {};
+    expectedCommand.fromAddress = 1;
+    expectedCommand.toAddress = 10;
+    expectedCommand.type = CommandType::DATAPOINT_DELIVER;
+
+    Datapoint expectedDatapoint = {};
+    expectedDatapoint.id = 1;
+    expectedDatapoint.type = DatapointType::BOOLEAN;
+    expectedDatapoint.value_bool = true;
+    expectedCommand.payloadSize = serializeDatapoint(&expectedDatapoint, payload);
+    expectedCommand.payload = payload;
+    serializeCommand(&expectedCommand, buffer);
+
+    Command commandInstance = {};
+    uint8_t commandPayload[HOMIO_COMMAND_PAYLOAD_SIZE];
+    commandInstance.payload = commandPayload;
+
+    underTest->setState(TransportState::DATA_SEND);
+
+    ON_CALL(*commandQueue, peek)
+        .WillByDefault(Return(&sentCommand));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&commandInstance));
+    ON_CALL(*radio, send)
+        .WillByDefault(Return(1));
+    ON_CALL(*radio, hasAckData)
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([=](void *data) -> void
+        { 
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
+        }));
+    EXPECT_CALL(*commandPool, returnCommandInstance(Eq(&commandInstance)));
+
+    underTest->tick();
+
+    Datapoint datapoint;
+    ASSERT_TRUE(underTest->readDatapoint(&datapoint));
+    ASSERT_THAT(datapoint.id, Eq(expectedDatapoint.id));
+    ASSERT_THAT(underTest->getReceivedCommand(), Eq(nullptr));
+}
 // TEST_F(DeviceTest, WhenSendingDatapointFromAndToAddressesShouldBePopulated) {
 //     Datapoint datapoint = {};
 //     datapoint.id = 1;

@@ -42,6 +42,22 @@ namespace Homio {
             void setHubReceiveAddress(uint8_t hubReceiveAddress) {
                 hubReceiveAddress_ = hubReceiveAddress;
             }
+
+            uint8_t getDatapointId() {
+                return DeviceTransport::getDatapointId();
+            }
+
+            bool handleCommand(Command *command) {
+                return DeviceTransport::handleCommand(command);
+            }
+
+            void setReceivedCommand(Command *command) {
+                receivedCommand_ = command;
+            }
+
+            Command *getReceivedCommand() {
+                return receivedCommand_;
+            }
     };
 }
 

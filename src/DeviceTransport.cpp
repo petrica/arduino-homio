@@ -6,8 +6,9 @@ namespace Homio {
     DeviceTransport::DeviceTransport(uint8_t deviceAddress, uint8_t hubAddress, NRFLite *radio, CommandPool *commandPool, CommandQueue *commandQueue): 
         deviceAddress_(deviceAddress), hubAddress_(hubAddress), radio_(radio), commandPool_(commandPool), commandQueue_(commandQueue)
         {
-
+        
         state_ = TransportState::IDLE;
+        receivedCommand_ = nullptr;
     }
 
     bool DeviceTransport::writeDatapoint(const Datapoint *datapoint) {
@@ -31,6 +32,33 @@ namespace Homio {
 
     void DeviceTransport::receiveCommand(Command *command) {
         command->type = CommandType::CONFIRM;
+    }
+
+    uint8_t DeviceTransport::getDatapointId() {
+        if (receivedCommand_ != nullptr 
+            && receivedCommand_->type == CommandType::DATAPOINT_DELIVER
+            && receivedCommand_->payloadSize > 0) {
+
+            return unserializeDatapointId(receivedCommand_->payload);
+        }
+
+        return 0;
+    }
+
+    bool DeviceTransport::readDatapoint(Datapoint *datapoint) {
+        if (receivedCommand_ != nullptr
+            && receivedCommand_->type == CommandType::DATAPOINT_DELIVER
+            && receivedCommand_->payloadSize > 0) {
+            
+            unserializeDatapoint(datapoint, receivedCommand_->payload);
+
+            commandPool_->returnCommandInstance(receivedCommand_);
+            receivedCommand_ = nullptr;
+
+            return true;
+        }
+
+        return false;
     }
 
     bool DeviceTransport::receiveAck(Command *command) {
@@ -60,11 +88,25 @@ namespace Homio {
     bool DeviceTransport::handleCommand(Command *command) {
         if (command == nullptr) return false;
 
-        Command received = {};
-        return sendCommand(command, hubReceiveAddress_)
-                && receiveAck(&received)
-                && command->fromAddress == received.toAddress
-                && received.type == CommandType::CONFIRM;
+        Command *received = commandPool_->borrowCommandInstance();
+        bool success = false;
+        if (received != nullptr) {
+            success = sendCommand(command, hubReceiveAddress_)
+                        && receiveAck(received)
+                        && command->fromAddress == received->toAddress;
+
+            if (received->type == CommandType::DATAPOINT_DELIVER) {
+                if (receivedCommand_ != nullptr) {
+                    commandPool_->returnCommandInstance(receivedCommand_);
+                }
+                receivedCommand_ = received;
+            }
+            else {
+                commandPool_->returnCommandInstance(received);
+            }
+        }
+        
+        return success;
     }
 
     void DeviceTransport::tick() {
@@ -89,6 +131,7 @@ namespace Homio {
                     commandPool_->returnCommandInstance(received);
                 break;
             case TransportState::LOCK_DELAY:
+                    // TO DO: lock delay should not block the processor
                     delay(HOMIO_TRANSPORT_CONFLICT_DELAY);
                 break;
             case TransportState::DATA_SEND:

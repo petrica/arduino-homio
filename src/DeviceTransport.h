@@ -49,6 +49,8 @@ namespace Homio {
 
             TransportState state_;
 
+            Command *receivedCommand_;
+
         #ifdef UNIT_TEST
         friend class DeviceTransportUnderTest;
         #endif

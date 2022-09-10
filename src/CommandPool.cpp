@@ -10,7 +10,7 @@ namespace Homio {
 
     Command *CommandPool::getInstance() {
         Command *command = new Command();
-        command->payload = new uint8_t[HOMIO_BUFFER_SIZE - HOMIO_COMMAND_HEADER_SIZE];
+        command->payload = new uint8_t[HOMIO_COMMAND_PAYLOAD_SIZE];
         return command;
     }
 

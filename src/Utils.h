@@ -12,7 +12,10 @@ namespace Homio {
     void unserializeCommand(Command *command, uint8_t *buffer);
 
     uint8_t serializeDatapoint(const Datapoint *datapoint, uint8_t *buffer);
+    uint8_t unserializeDatapointId(uint8_t *buffer);
     void unserializeDatapoint(Datapoint *datapoint, uint8_t *buffer);
+
+
 }
 
 #endif

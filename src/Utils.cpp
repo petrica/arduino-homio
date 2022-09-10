@@ -73,7 +73,7 @@ namespace Homio {
     }
 
     void unserializeDatapoint(Datapoint *datapoint, uint8_t *buffer) {
-        datapoint->id = buffer[0];
+        datapoint->id = unserializeDatapointId(buffer);
 
         datapoint->value_int = 0;
         datapoint->type = static_cast<DatapointType>(buffer[1]);
@@ -99,5 +99,9 @@ namespace Homio {
                     memcpy(datapoint->value_string, buffer + HOMIO_DATAPOINT_HEADER_SIZE + 1, buffer[HOMIO_DATAPOINT_HEADER_SIZE]);
                 break;
         }
+    }
+
+    uint8_t unserializeDatapointId(uint8_t *buffer) {
+        return buffer[0];
     }
 }
