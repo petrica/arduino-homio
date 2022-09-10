@@ -524,6 +524,69 @@ TEST_F(DeviceTransportProtocolTest, WhenDataSentAndGotBackDatapointDeliverThenDa
     ASSERT_THAT(datapoint.id, Eq(expectedDatapoint.id));
     ASSERT_THAT(underTest->getReceivedCommand(), Eq(nullptr));
 }
+
+TEST_F(DeviceTransportProtocolTest, WhenInIdleStateThenChecIfDataAvailable) {
+    underTest->setState(TransportState::IDLE);
+
+    EXPECT_CALL(*radio, hasData);
+    EXPECT_CALL(*commandPool, borrowCommandInstance);
+
+    underTest->tick();
+}
+
+TEST_F(DeviceTransportProtocolTest, WhenInIdleAndReceivedConfirmCommandThenReturnInstanceToPool) {
+    Command instance;
+
+    Command command;
+    command.type = CommandType::CONFIRM;
+    command.fromAddress = 1;
+    command.toAddress = 10;
+    command.payloadSize = 0;
+    serializeCommand(&command, buffer);
+
+    underTest->setState(TransportState::IDLE);
+
+    ON_CALL(*radio, hasData)
+        .WillByDefault(Return(true));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&instance));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([=](void *data) -> void
+        { 
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
+        }));
+    EXPECT_CALL(*commandPool, returnCommandInstance(Eq(&instance)));
+
+    underTest->tick();    
+}
+
+TEST_F(DeviceTransportProtocolTest, WhenInIdleAndReceivedDeliverCommandThenDoNotReturnInstanceToPool) {
+    Command instance;
+
+    Command command;
+    command.type = CommandType::DATAPOINT_DELIVER;
+    command.fromAddress = 1;
+    command.toAddress = 10;
+    command.payloadSize = 0;
+    serializeCommand(&command, buffer);
+
+    underTest->setState(TransportState::IDLE);
+
+    ON_CALL(*radio, hasData)
+        .WillByDefault(Return(true));
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(&instance));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([=](void *data) -> void
+        { 
+            memcpy(data, buffer, HOMIO_BUFFER_SIZE);
+        }));
+    EXPECT_CALL(*commandPool, returnCommandInstance)
+        .Times(0);
+
+    underTest->tick();    
+}
+
 // TEST_F(DeviceTest, WhenSendingDatapointFromAndToAddressesShouldBePopulated) {
 //     Datapoint datapoint = {};
 //     datapoint.id = 1;

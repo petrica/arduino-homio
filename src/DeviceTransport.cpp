@@ -14,6 +14,7 @@ namespace Homio {
     bool DeviceTransport::writeDatapoint(const Datapoint *datapoint) {
         Command *command = commandPool_->borrowCommandInstance();
         if (command == nullptr) return false;
+
         command->fromAddress = deviceAddress_;
         command->toAddress = hubAddress_;
         command->payloadSize = serializeDatapoint(datapoint, command->payload);
@@ -30,8 +31,17 @@ namespace Homio {
         return sendCommand(command, command->toAddress);
     }
 
-    void DeviceTransport::receiveCommand(Command *command) {
-        command->type = CommandType::CONFIRM;
+    bool DeviceTransport::receiveCommand(Command *command) {
+        if (radio_->hasData()) {
+            uint8_t buffer[HOMIO_BUFFER_SIZE];
+            radio_->readData(buffer);
+
+            unserializeCommand(command, buffer);
+
+            return command->toAddress == deviceAddress_;
+        }
+
+        return false;
     }
 
     uint8_t DeviceTransport::getDatapointId() {
@@ -95,13 +105,7 @@ namespace Homio {
                         && receiveAck(received)
                         && command->fromAddress == received->toAddress;
 
-            if (received->type == CommandType::DATAPOINT_DELIVER) {
-                if (receivedCommand_ != nullptr) {
-                    commandPool_->returnCommandInstance(receivedCommand_);
-                }
-                receivedCommand_ = received;
-            }
-            else {
+            if (!handleReceivedCommand(received)) {
                 commandPool_->returnCommandInstance(received);
             }
         }
@@ -109,11 +113,29 @@ namespace Homio {
         return success;
     }
 
+    bool DeviceTransport::handleReceivedCommand(Command *command) {
+        if (command->type == CommandType::DATAPOINT_DELIVER) {
+            if (receivedCommand_ != nullptr) {
+                commandPool_->returnCommandInstance(receivedCommand_);
+            }
+            receivedCommand_ = command;
+
+            return true;
+        }
+       
+        return false;
+    }
+
     void DeviceTransport::tick() {
         Command *received;
 
         switch (state_) {
             case TransportState::IDLE:
+                    received = commandPool_->borrowCommandInstance();
+                    if (!receiveCommand(received) || !handleReceivedCommand(received)) {
+                        commandPool_->returnCommandInstance(received);
+                    }
+
                     if (commandQueue_->getSize() > 0) state_ = TransportState::LOCK_REQUEST;
                 break;
             case TransportState::LOCK_REQUEST:

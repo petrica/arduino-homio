@@ -19,8 +19,8 @@ namespace Homio {
                 return DeviceTransport::sendCommand(command, radioId);
             }
 
-            void receiveCommand(Command *command) {
-                DeviceTransport::receiveCommand(command);
+            bool receiveCommand(Command *command) {
+                return DeviceTransport::receiveCommand(command);
             }
 
             bool receiveAck(Command *command) {
@@ -49,6 +49,10 @@ namespace Homio {
 
             bool handleCommand(Command *command) {
                 return DeviceTransport::handleCommand(command);
+            }
+
+            bool handleReceivedCommand(Command *command) {
+                return DeviceTransport::handleReceivedCommand(command);
             }
 
             void setReceivedCommand(Command *command) {

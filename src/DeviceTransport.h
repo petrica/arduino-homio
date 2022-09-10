@@ -32,11 +32,12 @@ namespace Homio {
         protected:
             bool sendCommand(const Command *command);
             bool sendCommand(const Command *command, const uint8_t radioId);
-            void receiveCommand(Command *command);
+            bool receiveCommand(Command *command);
             bool receiveAck(Command *command);
 
             bool handleLockRequest(Command *receiveCommand);
             bool handleCommand(Command *command);
+            bool handleReceivedCommand(Command *command);
 
         private:
             NRFLite *radio_;

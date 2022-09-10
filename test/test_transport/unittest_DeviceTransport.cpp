@@ -131,14 +131,6 @@ TEST_F(DeviceTransportTest, ReturnFalseWhenUnsuccessulSendCommand) {
     ASSERT_FALSE(underTest->sendCommand(&commnad));
 }
 
-TEST_F(DeviceTransportTest, ReceiveConfirmCommand) {
-    Command command = {};
-
-    underTest->receiveCommand(&command);
-
-    ASSERT_THAT(command.type, Eq(CommandType::CONFIRM));
-}
-
 TEST_F(DeviceTransportTest, AckReturnedNoData) {
     Command command = {};
 
@@ -307,4 +299,53 @@ TEST_F(DeviceTransportTest, WhenNoCommandReceivedThenReadingDatapointShouldRetur
     Datapoint datapoint;
 
     ASSERT_FALSE(underTest->readDatapoint(&datapoint));
+}
+
+TEST_F(DeviceTransportTest, WhenNoDataAvailabeThenReceivedCommandReturnFalse) {
+    Command command;
+
+    ON_CALL(*radio, hasData)
+        .WillByDefault(Return(false));
+    EXPECT_CALL(*radio, hasData());
+
+    ASSERT_FALSE(underTest->receiveCommand(&command));
+}
+
+TEST_F(DeviceTransportTest, WhenConfirmCommandThenReceiveCommand) {
+    Command command;
+
+    uint8_t expected[4];
+    expected[0] = static_cast<uint8_t>(CommandType::CONFIRM);
+    expected[1] = 1; // from
+    expected[2] = deviceAddress; // to
+    expected[3] = 0; // payload size
+
+    ON_CALL(*radio, hasData)
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([expected](void* data) {
+          memcpy(data, expected, 4);
+        }));
+
+    ASSERT_TRUE(underTest->receiveCommand(&command));
+    ASSERT_THAT(command.type, Eq(CommandType::CONFIRM));
+}
+
+TEST_F(DeviceTransportTest, WhenCommandSentToOtherDeviceThenReturnFalse) {
+    Command command;
+
+    uint8_t expected[4];
+    expected[0] = static_cast<uint8_t>(CommandType::CONFIRM);
+    expected[1] = 1; // from
+    expected[2] = deviceAddress + 1; // to
+    expected[3] = 0; // payload size
+
+    ON_CALL(*radio, hasData)
+        .WillByDefault(Return(true));
+    EXPECT_CALL(*radio, readData(_))
+        .WillOnce(Invoke([expected](void* data) {
+          memcpy(data, expected, 4);
+        }));
+
+    ASSERT_FALSE(underTest->receiveCommand(&command));
 }

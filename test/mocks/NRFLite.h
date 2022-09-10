@@ -13,6 +13,7 @@ class NRFLite {
         virtual uint8_t send(uint8_t toRadioId, void *data, uint8_t length) = 0;
         virtual uint8_t hasAckData() = 0;
         virtual void readData(void *data) = 0;
+        virtual bool hasData() = 0;
 };
 
 class NRFLiteMock: public NRFLite {
@@ -22,6 +23,7 @@ class NRFLiteMock: public NRFLite {
         MOCK_METHOD(uint8_t, send, (uint8_t toRadioId, void *data, uint8_t length), (override));
         MOCK_METHOD(uint8_t, hasAckData, (), (override));
         MOCK_METHOD(void, readData, (void *data), (override));
+        MOCK_METHOD(bool, hasData, (), (override));
 };
 
 #endif
