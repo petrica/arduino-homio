@@ -76,7 +76,7 @@ namespace Homio {
                 break;
             case TransportState::LOCK_REQUEST:
                     received = commandPool_->borrowCommandInstance();
-                    if (handleLockRequest(received)) {
+                    if (received != nullptr && handleLockRequest(received)) {
                         if (received->toAddress == deviceAddress_) {
                                 hubReceiveAddress_ = received->payload[0];
                                 state_ = TransportState::DATA_SEND;

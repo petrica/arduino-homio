@@ -85,6 +85,15 @@ TEST_F(CommandPoolTest, PuttingBackObjectWhenPoolIsFullShouldDoNothing) {
     ASSERT_THAT(underTest->getPoolCount(), Eq(HOMIO_COMMAND_POOL_SIZE));
 }
 
+TEST_F(CommandPoolTest, PuttingBackANullPtrShouldDoNothing) {
+    Command command;
+
+    underTest->borrowCommandInstance();
+    underTest->returnCommandInstance(nullptr);
+
+    ASSERT_THAT(underTest->getPoolCount(), Eq(HOMIO_COMMAND_POOL_SIZE - 1));
+}
+
 TEST_F(CommandPoolTest, FillingCommandPayloadWithDataShouldRemainTheSame) {
     Command *command;
     command = underTest->borrowCommandInstance();

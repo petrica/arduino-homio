@@ -94,15 +94,15 @@ TEST_F(DeviceTest, SendDatapointWritesToTransport)
 }
 
 TEST_F(DeviceTest, DatapointsListIsEmpty) {
-  uint8_t listCount = underTest->getDatapointsCount();
-  ASSERT_THAT(listCount, Eq(0));
+    uint8_t listCount = underTest->getDatapointsCount();
+    ASSERT_THAT(listCount, Eq(0));
 }
 
 TEST_F(DeviceTest, DatapointsListHasCountOfOne) {
-  Datapoint datapoint;
-  underTest->addDatapoint(&datapoint);
-  uint8_t listCount = underTest->getDatapointsCount();
-  ASSERT_THAT(listCount, Eq(1));
+    Datapoint datapoint;
+    underTest->addDatapoint(&datapoint);
+    uint8_t listCount = underTest->getDatapointsCount();
+    ASSERT_THAT(listCount, Eq(1));
 }
 
 // TEST_F(DeviceTest, WhenDeviceInitializedCapabilitiesAreSetToDefault)

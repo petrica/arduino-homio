@@ -362,20 +362,17 @@ TEST_F(DeviceTransportProtocolTest, WhenInDataSendAndQueueEmptyThenDontSend) {
     underTest->tick();
 }
 
-// TEST_F(DeviceTest, UnsuccessfulSendDatapointIfNoMoreObjectsInPool)
-// {
-//     Datapoint datapoint = {};
-//     datapoint.id = 1;
-//     datapoint.type = DatapointType::INTEGER;
-//     datapoint.value_int = 0;
+TEST_F(DeviceTransportProtocolTest, WhenInLockRequestModeAndNoCommandInstanceAvailableBecomeIdle)
+{
+    underTest->setState(TransportState::LOCK_REQUEST);
 
-//     underTest->addDatapoint(&datapoint);
-//     ON_CALL(*commandPool, borrowCommandInstance)
-//         .WillByDefault(Return(nullptr));
-//     EXPECT_CALL(*commandPool, borrowCommandInstance());
+    ON_CALL(*commandPool, borrowCommandInstance)
+        .WillByDefault(Return(nullptr));
 
-//     ASSERT_FALSE(underTest->sendDatapoint(1));
-// }
+    underTest->tick();
+
+    ASSERT_THAT(underTest->getState(), Eq(TransportState::IDLE));
+}
 
 // TEST_F(DeviceTest, WhenSendingDatapointFromAndToAddressesShouldBePopulated) {
 //     Datapoint datapoint = {};

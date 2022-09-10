@@ -24,7 +24,7 @@ namespace Homio {
     }
 
     void CommandPool::returnCommandInstance(Command *commandInstance) {
-        if (poolCount_ < HOMIO_COMMAND_POOL_SIZE) { 
+        if (commandInstance != nullptr && poolCount_ < HOMIO_COMMAND_POOL_SIZE) { 
             poolCount_ += 1;
             pool_[poolCount_ - 1] = commandInstance;
         }
